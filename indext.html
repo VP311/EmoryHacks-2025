@@ -1,34 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <title>EmoryHacks 2025 – SAT Project</title>
+  <title>StudyDeck – Adaptive SAT Trainer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-  <header>
-    <h1>SAT Snapshot</h1>
-    <p>5-minute scanner for your SAT strengths and weaknesses.</p>
-  </header>
+  <div class="app">
 
-  <main>
-    <section id="intro">
-      <button id="start-btn">Start Quick Diagnostic</button>
-    </section>
+    <!-- Navigation -->
+    <header class="top-nav">
+      <div class="logo" id="home-link">StudyDeck<span>.</span></div>
+      <div class="nav-tagline">Smarter practice. Less time.</div>
+    </header>
 
-    <section id="question-section" class="hidden">
-      <div id="question-text"></div>
-      <div id="answers"></div>
-      <button id="next-btn" class="hidden">Next</button>
-    </section>
+    <main>
 
-    <section id="result-section" class="hidden">
-      <h2>Your Snapshot</h2>
-      <div id="result-summary"></div>
-      <button id="restart-btn">Try Again</button>
-    </section>
-  </main>
+      <!-- ================================ -->
+      <!-- LANDING PAGE -->
+      <!-- ================================ -->
 
+      <section id="landing" class="landing">
+        <div class="hero">
+          <h1>5-minute SAT drills that learn how you think.</h1>
+          <p>
+            Answer short, Anki-style questions and we’ll learn which concepts
+            you struggle with so we can target your next session where it
+            matters most.
+          </p>
+          <button id="start-session" class="primary-btn">
+            Start a quick session
+          </button>
+        </div>
+
+        <!-- Preview Card -->
+        <div class="hero-card">
+          <div class="card-label">Preview</div>
+
+          <div class="card">
+            <div class="card-topic">Reading · Inference</div>
+
+            <div class="card-question">
+              The author most likely includes this detail in order to...
+            </div>
+
+            <textarea class="card-input" placeholder="Type how you’d answer or what you’re thinking…"></textarea>
+
+            <div class="card-actions">
+              <button class="ghost-btn">Skip</button>
+              <button class="primary-btn small">Next</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================ -->
+      <!-- TRAINER PAGE (HIDDEN AT START) -->
+      <!-- ================================ -->
+
+      <section id="trainer" class="trainer hidden">
+
+        <div class="trainer-main">
+
+          <!-- session tags -->
+          <div class="session-meta">
+            <div class="chip">Session · 5 questions</div>
+            <div class="chip" id="topic-chip">Topic: —</div>
+          </div>
+
+          <!-- Active Question Card -->
+          <div class="card large">
+
+            <div class="card-progress">
+              <span id="question-counter">Question 1 / 5</span>
+            </div>
+
+            <div id="card-question-text" class="card-question">
+              <!-- filled by JS -->
+            </div>
+
+            <textarea id="card-answer-input" class="card-input"
+              placeholder="Write your answer, your reasoning, or bullet points…"></textarea>
+
+            <div class="card-actions">
+              <button id="show-note" class="ghost-btn">I don’t know</button>
+              <button id="next-question" class="primary-btn">Save & next</button>
+            </div>
+
+            <div id="helper-note" class="helper-note hidden">
+              That’s okay — just type anything you’re thinking. We’ll use this
+              later to understand your patterns, not to grade you.
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="trainer-sidebar">
+          <h2>Your snapshot</h2>
+          <p class="sidebar-text">
+            As you answer, we’ll highlight what you seem confident in and what
+            might need more practice.
+          </p>
+
+          <ul class="sidebar-list">
+            <li><span id="stat-reading">Reading: —</span></li>
+            <li><span id="stat-writing">Writing: —</span></li>
+            <li><span id="stat-math">Math: —</span></li>
+          </ul>
+
+          <p class="sidebar-footnote">
+            The adaptive engine will go here next — follow-up decks,
+            recommendations, and skill targeting.
+          </p>
+        </aside>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- JS -->
   <script src="script.js"></script>
 </body>
+
 </html>
