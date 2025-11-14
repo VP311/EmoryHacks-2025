@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // This will later hold our questions (we'll expand this)
     const questions = [
         {
-            topic: "Reading · Inference - test change",
+            topic: "Reading · Inference",
             text: "The author includes the detail about the neighbor mainly to show what?",
         },
         {
