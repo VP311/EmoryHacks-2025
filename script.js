@@ -535,6 +535,9 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("Please select an answer first.");
             return;
         }
+        if (submitBtn.classList.contains("disabled")){
+            return;
+        }
 
         const currentQuestion = questions[currentIndex];
         const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
@@ -558,12 +561,15 @@ document.addEventListener("DOMContentLoaded", () => {
             currentQuestion.tags || []
         );
 
+        submitBtn.classList.add("disabled");
+
         // If wrong and has rationale, get AI explanation
         if (!isCorrect && rationale) {
             await showAIExplanation(currentQuestion, selectedAnswer, rationale);
         }
 
         submitBtn.classList.add("hidden");
+        submitBtn.classList.remove("disabled");
         nextBtn.classList.remove("hidden");
     });
 
