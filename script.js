@@ -3,7 +3,7 @@
 
 //firebase imported functions
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getAuth, signInWithCredential, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import { getAuth, signInWithCredential, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithRedirect, getRedirectResult, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, where, addDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
 
@@ -22,8 +22,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Get references to the services 
+<<<<<<< Updated upstream
 export const auth = getAuth(app); 
 export const db = getFirestore(app); 
+=======
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+>>>>>>> Stashed changes
+console.log(auth);
 const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 
@@ -39,7 +45,7 @@ export async function signInWithGoogle(credential) {
         const credentialObj = GoogleAuthProvider.credential(credential);
         const result = await signInWithCredential(auth, credentialObj);
         const user = result.user;
-        
+
         // Initialize user progress in Firestore if it doesn't exist
         const userProgressRef = doc(db, 'users', user.uid, 'progress', 'data');
         const userProgressSnap = await getDoc(userProgressRef);
@@ -47,13 +53,23 @@ export async function signInWithGoogle(credential) {
         if (!userProgressSnap.exists()) {
             await setDoc(userProgressRef, {
                 wrongQuestions: [],
+                wrongQuestionsByCategory: {
+                    // SAT Math categories
+                    Algebra: [],
+                    Advanced_Math: [],
+                    'Problem_Solving_&_Data_Analysis': [],
+                    'Geometry_&_Trigonometry': [],
+                    // SAT Reading & Writing categories
+                    'Craft_and_Structure': [],
+                    'Information_and_Ideas': [],
+                    'Standard_English_Conventions': [],
+                    'Expression_of_Ideas': []
+                },
                 skillScores: {},
                 sessions: [],
                 createdAt: new Date()
             });
-        }
-        
-        localStorage.setItem("logged-in", "true");
+        }        localStorage.setItem("logged-in", "true");
         localStorage.setItem("firebase_user_id", user.uid);
         return user;
     } catch (error) {
@@ -86,30 +102,48 @@ async function handleRedirectSignIn() {
     }
 }
 // Global Scope (Only one instance of this listener)
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     // Get element references here, OR make sure they are globally accessible
-    const userInfoEl = document.getElementById("userInfo"); 
+    const userInfoEl = document.getElementById("userInfo");
     const signInEl = document.getElementById("signIn");
+    const loginBtn = document.getElementById("google-sign-in-button");
+<<<<<<< Updated upstream
     
+=======
+
+>>>>>>> Stashed changes
     // Check if the page is currently loaded in the browser
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
 
         if (user) {
             // --- USER IS SIGNED IN ---
+
+<<<<<<< Updated upstream
+            if (loginBtn){
+=======
+            if (loginBtn) {
+>>>>>>> Stashed changes
+                loginBtn.classList.add("hidden");
+            }
+
             currentUserId = user.uid;
             console.log("User is signed in:", user.uid);
 
             // 1. Hide Login Button, Show Profile Section (Fixes the visible button issue)
             if (signInEl) signInEl.style.display = 'none';
             if (userInfoEl) {
-                userInfoEl.style.display = 'block'; 
+                userInfoEl.style.display = 'block';
                 // You need logic here to populate userInfoEl with the user's name/photo
             }
 
             // 2. Redirect to profile page if on landing page
             const currentPath = window.location.pathname;
-            if (currentPath === "/indext.html" || currentPath === "/" || currentPath.endsWith("index.html")) {
-                 window.location.replace("profile.html");
+            if (currentPath === "/index.html" || currentPath === "/" || currentPath.endsWith("index.html")) {
+<<<<<<< Updated upstream
+                 //window.location.replace("profile.html");
+=======
+                //window.location.replace("profile.html");
+>>>>>>> Stashed changes
             }
             // If you are on the profile page, call loadUserProgress() 
             if (currentPath.includes("profile.html")) {
@@ -120,6 +154,14 @@ onAuthStateChanged(auth, (user) => {
             // --- USER IS SIGNED OUT ---
             currentUserId = null;
             console.log("No user logged in.");
+
+<<<<<<< Updated upstream
+            if (loginBtn){
+=======
+            if (loginBtn) {
+>>>>>>> Stashed changes
+                loginBtn.classList.remove("hidden");
+            }
 
             // Show Login Button, Hide Profile Section
             if (signInEl) signInEl.style.display = 'block';
@@ -138,11 +180,11 @@ handleRedirectSignIn();
 
 async function loadUserProgress() {
     if (!currentUserId) return;
-    
+
     try {
         const userProgressRef = doc(db, 'users', currentUserId, 'progress', 'data');
         const userProgressSnap = await getDoc(userProgressRef);
-        
+
         if (userProgressSnap.exists()) {
             currentUserProgress = userProgressSnap.data();
         }
@@ -158,7 +200,7 @@ async function loadUserProgress() {
 export async function loadQuestionsFromFirestore(filters = {}) {
     try {
         let q = query(collection(db, 'questions'));
-        
+
         // Apply filters if provided
         if (filters.tags && filters.tags.length > 0) {
             q = query(q, where('tags', 'array-contains-any', filters.tags));
@@ -169,13 +211,13 @@ export async function loadQuestionsFromFirestore(filters = {}) {
         if (filters.type) {
             q = query(q, where('type', '==', filters.type));
         }
-        
+
         const querySnapshot = await getDocs(q);
         const questions = [];
         querySnapshot.forEach((doc) => {
             questions.push({ id: doc.id, ...doc.data() });
         });
-        
+
         return questions;
     } catch (error) {
         console.error("Error loading questions:", error);
@@ -192,30 +234,30 @@ export async function getAdaptiveQuestions(count = 5) {
         const allQuestions = await loadQuestionsFromFirestore();
         return shuffleArray(allQuestions).slice(0, count);
     }
-    
+
     // Get user's wrong questions
     const wrongQuestionIds = currentUserProgress.wrongQuestions || [];
-    
+
     // Prioritize questions from weak areas
     const allQuestions = await loadQuestionsFromFirestore();
-    
+
     // Separate into wrong question categories and others
-    const wrongCategoryQuestions = allQuestions.filter(q => 
+    const wrongCategoryQuestions = allQuestions.filter(q =>
         wrongQuestionIds.includes(q.id)
     );
-    const otherQuestions = allQuestions.filter(q => 
+    const otherQuestions = allQuestions.filter(q =>
         !wrongQuestionIds.includes(q.id)
     );
-    
+
     // Mix: 60% from wrong areas, 40% random
     const wrongCount = Math.ceil(count * 0.6);
     const randomCount = count - wrongCount;
-    
+
     const selected = [
         ...shuffleArray(wrongCategoryQuestions).slice(0, wrongCount),
         ...shuffleArray(otherQuestions).slice(0, randomCount)
     ];
-    
+
     return shuffleArray(selected).slice(0, count);
 }
 
@@ -237,12 +279,12 @@ function calculateSkillAccuracy(skillScores) {
 //renderPerformanceChart function 
 function renderPerformanceChart(accuracyData) {
     const chartElement = document.getElementById('snapshotChart');
-    if(!chartElement){
+    if (!chartElement) {
         setTimeout(() => renderPerformanceChart(accuracyData), 100); // Retry after a short delay
         return;
     }
     const ctx = chartElement.getContext('2d');
-    if(!ctx){
+    if (!ctx) {
         console.error("Failed to get 2D context for the chart element.");
         return
     }
@@ -251,22 +293,22 @@ function renderPerformanceChart(accuracyData) {
     const chartData = {
         labels: categories,
         datasets: [{
-            label: 'Accuracy %', 
-            data: percentages, 
+            label: 'Accuracy %',
+            data: percentages,
             backgroundColor: [
-                'rgba(255, 99, 132, 0.7)', 
-                'rgba(54, 162, 235, 0.7)', 
-                'rgba(255, 206, 86, 0.7)' 
+                'rgba(255, 99, 132, 0.7)',
+                'rgba(54, 162, 235, 0.7)',
+                'rgba(255, 206, 86, 0.7)'
             ],
             borderWidth: 1
         }]
     };
 
-    if(skillChart){
+    if (skillChart) {
         skillChart.destroy();
     }
-    skillChart = new Chart(ctx,{
-        type: 'bar', 
+    skillChart = new Chart(ctx, {
+        type: 'bar',
         data: chartData,
         options: {
             // ... (keep the same options you already defined for scales, responsiveness, etc.)
@@ -293,7 +335,7 @@ function shuffleArray(array) {
 // Session management
 export async function createSession() {
     if (!currentUserId) return null;
-    
+
     try {
         const sessionRef = await addDoc(collection(db, 'users', currentUserId, 'sessions'), {
             questions: [],
@@ -311,7 +353,7 @@ export async function createSession() {
 
 export async function saveAnswerToSession(questionId, userAnswer, isCorrect, rationale = '') {
     if (!currentUserId || !currentSessionId) return;
-    
+
     try {
         const sessionRef = doc(db, 'users', currentUserId, 'sessions', currentSessionId);
         await updateDoc(sessionRef, {
@@ -329,24 +371,92 @@ export async function saveAnswerToSession(questionId, userAnswer, isCorrect, rat
     }
 }
 
-export async function updateUserProgress(questionId, isCorrect, skillCategory, tags) {
+/**
+ * Updates user progress and tracks wrong answers by category
+ * 
+ * When a question is answered incorrectly:
+ * 1. Adds question ID to general wrongQuestions array
+ * 2. Categorizes the question based on tags/topic (e.g., "Algebra", "Problem Solving & Data Analysis")
+ * 3. Adds question ID to category-specific array in wrongQuestionsByCategory
+ * 4. Updates skill scores
+ * 
+ * Firebase Schema:
+ * users/{userId}/progress/data
+ *   - wrongQuestions: [questionId1, questionId2, ...] // All wrong questions
+ *   - wrongQuestionsByCategory: {
+ *       "Algebra": [questionId1, questionId2, ...],
+ *       "Problem_Solving_&_Data_Analysis": [questionId3, ...],
+ *       "Advanced_Math": [...],
+ *       etc.
+ *     }
+ *   - skillScores: { "Algebra": { correct: 5, total: 10 }, ... }
+ * 
+ * @param {string} questionId - The unique ID of the question
+ * @param {boolean} isCorrect - Whether the answer was correct
+ * @param {string} skillCategory - The skill category (optional)
+ * @param {Array<string>} tags - Question tags for categorization
+ * @param {Object} question - Full question object with topic info
+ */
+export async function updateUserProgress(questionId, isCorrect, skillCategory, tags, question) {
     if (!currentUserId) return;
-    
+
     try {
         const progressRef = doc(db, 'users', currentUserId, 'progress', 'data');
-        
+
+        // Get the question category/topic for organizing wrong answers
+        const questionTopic = question?.topic || skillCategory || 'Other';
+
         if (!isCorrect) {
-            // Add to wrong questions if not already there
+            // Add to general wrong questions list
             await updateDoc(progressRef, {
                 wrongQuestions: arrayUnion(questionId)
             });
+
+            // Add to category-specific wrong questions (e.g., "Algebra", "Problem Solving & Data Analysis")
+            // Extract the skill name from the topic (e.g., "SAT_Math: Linear Equations" -> "Algebra" from tags)
+            let categoryKey = questionTopic;
+
+            // If we have tags, try to get more specific category
+            if (tags && tags.length > 0) {
+                // Map common tags to SAT skill categories
+                const tagToCategory = {
+                    'algebra': 'Algebra',
+                    'linear equations': 'Algebra',
+                    'quadratic': 'Algebra',
+                    'advanced math': 'Advanced Math',
+                    'functions': 'Advanced Math',
+                    'geometry': 'Geometry & Trigonometry',
+                    'trigonometry': 'Geometry & Trigonometry',
+                    'data analysis': 'Problem Solving & Data Analysis',
+                    'statistics': 'Problem Solving & Data Analysis',
+                    'probability': 'Problem Solving & Data Analysis',
+                    'ratios': 'Problem Solving & Data Analysis'
+                };
+
+                // Find matching category from tags
+                for (const tag of tags) {
+                    const lowerTag = tag.toLowerCase();
+                    if (tagToCategory[lowerTag]) {
+                        categoryKey = tagToCategory[lowerTag];
+                        break;
+                    }
+                }
+            }
+
+            // Update category-specific wrong question IDs
+            const fieldName = `wrongQuestionsByCategory.${categoryKey.replace(/\s+/g, '_')}`;
+            await updateDoc(progressRef, {
+                [fieldName]: arrayUnion(questionId)
+            });
+
+            console.log(`Added question ${questionId} to wrong list for category: ${categoryKey}`);
         }
-        
+
         // Update skill scores
         const progressSnap = await getDoc(progressRef);
         const currentProgress = progressSnap.data() || {};
         const skillScores = currentProgress.skillScores || {};
-        
+
         if (skillCategory) {
             if (!skillScores[skillCategory]) {
                 skillScores[skillCategory] = { correct: 0, total: 0 };
@@ -356,11 +466,11 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
                 skillScores[skillCategory].correct += 1;
             }
         }
-        
+
         await updateDoc(progressRef, {
             skillScores: skillScores
         });
-        
+
         // Reload progress
         await loadUserProgress();
     } catch (error) {
@@ -368,22 +478,69 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
     }
 }
 
+// Get all wrong question IDs for a specific category/skill
+export async function getWrongQuestionsByCategory(categoryName) {
+    if (!currentUserId) return [];
+    
+    try {
+        const progressRef = doc(db, 'users', currentUserId, 'progress', 'data');
+        const progressSnap = await getDoc(progressRef);
+        
+        if (!progressSnap.exists()) return [];
+        
+        const data = progressSnap.data();
+        const wrongQuestionsByCategory = data.wrongQuestionsByCategory || {};
+        
+        // Normalize category name (replace spaces with underscores)
+        const categoryKey = categoryName.replace(/\s+/g, '_');
+        
+        return wrongQuestionsByCategory[categoryKey] || [];
+    } catch (error) {
+        console.error("Error getting wrong questions by category:", error);
+        return [];
+    }
+}
+
+// Load full question data for wrong questions in a category
+export async function loadWrongQuestionsForCategory(categoryName) {
+    const questionIds = await getWrongQuestionsByCategory(categoryName);
+    
+    if (questionIds.length === 0) return [];
+    
+    try {
+        // Fetch all questions from Firestore questions collection
+        const questionsRef = collection(db, 'questions');
+        const q = query(questionsRef, where('id', 'in', questionIds.slice(0, 10))); // Firestore 'in' query limited to 10
+        const querySnapshot = await getDocs(q);
+        
+        const questions = [];
+        querySnapshot.forEach((doc) => {
+            questions.push(doc.data());
+        });
+        
+        return questions;
+    } catch (error) {
+        console.error("Error loading wrong questions:", error);
+        return [];
+    }
+}
+
 export async function completeSession() {
     if (!currentUserId || !currentSessionId) return;
-    
+
     try {
         const sessionRef = doc(db, 'users', currentUserId, 'sessions', currentSessionId);
         await updateDoc(sessionRef, {
             completed: true,
             completedAt: new Date()
         });
-        
+
         // Update progress sessions list
         const progressRef = doc(db, 'users', currentUserId, 'progress', 'data');
         await updateDoc(progressRef, {
             sessions: arrayUnion(currentSessionId)
         });
-        
+
         currentSessionId = null;
     } catch (error) {
         console.error("Error completing session:", error);
@@ -422,40 +579,70 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginBtn = document.getElementById("google-sign-in-button");
 
     if (loginBtn) {
+<<<<<<< Updated upstream
         loginBtn.addEventListener("click", async() => {
-            try {
-                await signInWithRedirect(auth, googleProvider);
-            } catch (error) {
-                console.error("Sign-in redirect initiation error:", error);
-            }
+            signInWithPopup(auth, googleProvider)
+            .then((result) => {
+                const user = result.user;
+                console.log("User signed in:", user.displayName, user.email);
+
+                loadIndexPage();
+            })
+            .catch((error) => {
+                console.error("Error signing in:", error.message);
+            });
+=======
+        loginBtn.addEventListener("click", async () => {
+            signInWithPopup(auth, googleProvider)
+                .then((result) => {
+                    const user = result.user;
+                    console.log("User signed in:", user.displayName, user.email);
+
+                    loadIndexPage();
+                })
+                .catch((error) => {
+                    console.error("Error signing in:", error.message);
+                });
+>>>>>>> Stashed changes
+            // try {
+            //     await signInWithRedirect(auth, googleProvider);
+            // } catch (error) {
+            //     console.error("Sign-in redirect initiation error:", error);
+            // }
         });
     }
 
     // Switch from landing → trainer
-    startBtn.addEventListener("click", async () => {
-        landingSection.classList.add("hidden");
-        trainerSection.classList.remove("hidden");
+    if (startBtn) {
+        startBtn.addEventListener("click", async () => {
+            landingSection.classList.add("hidden");
+            trainerSection.classList.remove("hidden");
 
-        // Create session and load questions
-        await createSession();
-        questions = await getAdaptiveQuestions(5);
-        
-        if (questions.length === 0) {
-            questionText.textContent = "No questions available. Please add questions to Firestore.";
-            return;
-        }
+            // Create session and load questions
+            await createSession();
+            questions = await getAdaptiveQuestions(5);
+<<<<<<< Updated upstream
+            
+=======
 
-        currentIndex = 0;
-        loadQuestion();
-    });
+>>>>>>> Stashed changes
+            if (questions.length === 0) {
+                questionText.textContent = "No questions available. Please add questions to Firestore.";
+                return;
+            }
 
+            currentIndex = 0;
+            loadQuestion();
+        });
+    }
     // Click logo → go back to home
-    homeLink.addEventListener("click", () => {
-        trainerSection.classList.add("hidden");
-        landingSection.classList.remove("hidden");
-        resetQuestionState();
-    });
-
+    if (homeLink) {
+        homeLink.addEventListener("click", () => {
+            trainerSection.classList.add("hidden");
+            landingSection.classList.remove("hidden");
+            resetQuestionState();
+        });
+    }
     // Load a question onto the card
     function loadQuestion() {
         if (currentIndex >= questions.length) {
@@ -467,10 +654,10 @@ document.addEventListener("DOMContentLoaded", () => {
         questionText.textContent = q.questionText;
         topicChip.textContent = q.type || q.topic || "Question";
         questionCounter.textContent = `Question ${currentIndex + 1} / ${questions.length}`;
-        
+
         // Render options
         renderOptions(q);
-        
+
         // Reset state
         selectedAnswer = null;
         isUnsure = false;
@@ -479,7 +666,7 @@ document.addEventListener("DOMContentLoaded", () => {
         aiExplanationPanel.classList.add("hidden");
         submitBtn.classList.remove("hidden");
         nextBtn.classList.add("hidden");
-        
+
         // Clear option selections
         document.querySelectorAll('.option-item').forEach(item => {
             item.classList.remove('selected', 'correct', 'incorrect');
@@ -517,66 +704,77 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Unsure button
-    unsureBtn.addEventListener("click", () => {
-        isUnsure = !isUnsure;
-        if (isUnsure) {
-            rationaleSection.classList.remove("hidden");
-            unsureBtn.textContent = "I'm confident";
-        } else {
-            rationaleSection.classList.add("hidden");
-            rationaleInput.value = "";
-            unsureBtn.textContent = "I'm unsure";
-        }
-    });
-
+    if (unsureBtn) {
+        unsureBtn.addEventListener("click", () => {
+            isUnsure = !isUnsure;
+            if (isUnsure) {
+                rationaleSection.classList.remove("hidden");
+                unsureBtn.textContent = "I'm confident";
+            } else {
+                rationaleSection.classList.add("hidden");
+                rationaleInput.value = "";
+                unsureBtn.textContent = "I'm unsure";
+            }
+        });
+    }
     // Submit answer
-    submitBtn.addEventListener("click", async () => {
-        if (!selectedAnswer) {
-            alert("Please select an answer first.");
-            return;
-        }
-        if (submitBtn.classList.contains("disabled")){
-            return;
-        }
+    if (submitBtn) {
+        submitBtn.addEventListener("click", async () => {
+            if (!selectedAnswer) {
+                alert("Please select an answer first.");
+                return;
+            }
+<<<<<<< Updated upstream
+            if (submitBtn.classList.contains("disabled")){
+=======
+            if (submitBtn.classList.contains("disabled")) {
+>>>>>>> Stashed changes
+                return;
+            }
 
-        const currentQuestion = questions[currentIndex];
-        const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
-        const rationale = isUnsure ? rationaleInput.value : '';
+            const currentQuestion = questions[currentIndex];
+            const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+            const rationale = isUnsure ? rationaleInput.value : '';
 
-        // Show feedback
-        showAnswerFeedback(isCorrect, currentQuestion);
+            // Show feedback
+            showAnswerFeedback(isCorrect, currentQuestion);
 
-        // Save to Firestore
-        await saveAnswerToSession(
-            currentQuestion.id,
-            selectedAnswer,
-            isCorrect,
-            rationale
-        );
+            // Save to Firestore
+            await saveAnswerToSession(
+                currentQuestion.id,
+                selectedAnswer,
+                isCorrect,
+                rationale
+            );
 
-        await updateUserProgress(
-            currentQuestion.id,
-            isCorrect,
-            currentQuestion.skillCategory,
-            currentQuestion.tags || []
-        );
+            await updateUserProgress(
+                currentQuestion.id,
+                isCorrect,
+                currentQuestion.skillCategory,
+<<<<<<< Updated upstream
+                currentQuestion.tags || []
+=======
+                currentQuestion.tags || [],
+                currentQuestion
+>>>>>>> Stashed changes
+            );
 
-        submitBtn.classList.add("disabled");
+            submitBtn.classList.add("disabled");
 
-        // If wrong and has rationale, get AI explanation
-        if (!isCorrect && rationale) {
-            await showAIExplanation(currentQuestion, selectedAnswer, rationale);
-        }
+            // If wrong and has rationale, get AI explanation
+            if (!isCorrect && rationale) {
+                await showAIExplanation(currentQuestion, selectedAnswer, rationale);
+            }
 
-        submitBtn.classList.add("hidden");
-        submitBtn.classList.remove("disabled");
-        nextBtn.classList.remove("hidden");
-    });
-
+            submitBtn.classList.add("hidden");
+            submitBtn.classList.remove("disabled");
+            nextBtn.classList.remove("hidden");
+        });
+    }
     function showAnswerFeedback(isCorrect, question) {
         answerFeedback.classList.remove("hidden");
         answerFeedback.className = `answer-feedback ${isCorrect ? 'correct' : 'incorrect'}`;
-        
+
         if (isCorrect) {
             answerFeedback.innerHTML = `
                 <strong>✓ Correct!</strong> ${question.explanation || 'Great job!'}
@@ -607,7 +805,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <h3>AI Explanation</h3>
                 <div class="ai-explanation-content" id="ai-explanation-content">${explanation}</div>
             `;
-            
+
             // Apply interactive highlighting
             const explanationContent = document.getElementById('ai-explanation-content');
             if (explanationContent) {
@@ -628,11 +826,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Next question
-    nextBtn.addEventListener("click", () => {
-        currentIndex++;
-        loadQuestion();
-    });
-
+    if (nextBtn) {
+        nextBtn.addEventListener("click", () => {
+            currentIndex++;
+            loadQuestion();
+        });
+    }
     function resetQuestionState() {
         questions = [];
         currentIndex = 0;
@@ -653,29 +852,42 @@ document.addEventListener("DOMContentLoaded", () => {
         nextBtn.classList.add("hidden");
         nextBtn.textContent = "Done";
     }
-    
+
 
     // -- WORK IN PROGRESS - DANIEL ---
 
-// SAT Breakdown navigation
-const showBreakdownBtn = document.getElementById("show-breakdown"); // You'll need to add this button
-const breakdownSection = document.getElementById("sat-breakdown");
+    // SAT Breakdown navigation
+    const showBreakdownBtn = document.getElementById("show-breakdown"); // You'll need to add this button
+    const breakdownSection = document.getElementById("sat-breakdown");
 
-// Add a button to navigate to breakdown (optional)
-if (showBreakdownBtn) {
-  showBreakdownBtn.addEventListener("click", () => {
-    landingSection.classList.add("hidden");
-    trainerSection.classList.add("hidden");
-    breakdownSection.classList.remove("hidden");
-  });
-}
+    // Add a button to navigate to breakdown (optional)
+    if (showBreakdownBtn) {
+        showBreakdownBtn.addEventListener("click", () => {
+            landingSection.classList.add("hidden");
+            trainerSection.classList.add("hidden");
+            breakdownSection.classList.remove("hidden");
+        });
+    }
 
+<<<<<<< Updated upstream
 // Click logo to go back home (update existing code)
-homeLink.addEventListener("click", () => {
-  trainerSection.classList.add("hidden");
-  breakdownSection.classList.add("hidden");
-  landingSection.classList.remove("hidden");
-});
-
+if (homeLink) {
+    homeLink.addEventListener("click", () => {
+    trainerSection.classList.add("hidden");
+    breakdownSection.classList.add("hidden");
+    landingSection.classList.remove("hidden");
+    });
+}
 // --- END CHART.JS IMPLEMENTATION ---
+=======
+    // Click logo to go back home (update existing code)
+    if (homeLink) {
+        homeLink.addEventListener("click", () => {
+            trainerSection.classList.add("hidden");
+            breakdownSection.classList.add("hidden");
+            landingSection.classList.remove("hidden");
+        });
+    }
+    // --- END CHART.JS IMPLEMENTATION ---
+>>>>>>> Stashed changes
 });
