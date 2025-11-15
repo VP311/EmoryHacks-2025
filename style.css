@@ -26,6 +26,48 @@ body {
     margin-bottom: 2rem;
 }
 
+.top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+.nav-left {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.nav-btn {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #3b82f6;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.08s ease;
+    cursor: pointer;
+}
+
+.nav-btn:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.6);
+    transform: translateY(-1px);
+}
+
+.nav-btn:active {
+    transform: translateY(0);
+}
+
 .logo {
     font-weight: 700;
     font-size: 1.4rem;
@@ -282,6 +324,223 @@ main {
 
     .top-nav {
         flex-direction: column;
-        gap: 0.4rem;
+        gap: 0.75rem;
+        align-items: flex-start;
     }
+
+    .nav-left {
+        flex-direction: column;
+        gap: 0.4rem;
+        width: 100%;
+    }
+
+    .nav-right {
+        width: 100%;
+    }
+
+    .nav-btn {
+        width: 100%;
+        text-align: center;
+        display: block;
+    }
+}
+
+
+/* SAT BREAKDOWN SCORES */
+
+/* ================================ */
+/* SAT BREAKDOWN STYLES */
+/* ================================ */
+
+.sat-breakdown {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.breakdown-header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.breakdown-subtitle {
+  color: #9ca3af;
+  margin-bottom: 2rem;
+}
+
+.breakdown-tabs {
+  display: flex;
+  gap: 2rem;
+  border-bottom: 2px solid rgba(148, 163, 184, 0.2);
+  margin-bottom: 2.5rem;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  padding: 0.75rem 0;
+  font-size: 1rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.tab-btn.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+  font-weight: 500;
+}
+
+.tab-btn:hover {
+  color: #e5e7eb;
+}
+
+/* Score Display */
+
+.score-display {
+  margin-bottom: 2.5rem;
+}
+
+.score-display h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.score-card {
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  max-width: 250px;
+}
+
+.score-label {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-bottom: 0.5rem;
+}
+
+.score-value {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+/* Skills Section */
+
+.skills-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.skills-description {
+  color: #9ca3af;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+.skill-item {
+  margin-bottom: 2.5rem;
+}
+
+.skill-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.skill-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.skill-meta {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+/* Progress Bar */
+
+.progress-bar-container {
+  position: relative;
+  height: 2rem;
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.progress-bar {
+  position: absolute;
+  height: 100%;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 0.5rem;
+  transition: width 0.6s ease;
+}
+
+.progress-labels {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* Skill Footer */
+
+.skill-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.performance-text {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.performance-text strong {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.skill-link {
+  font-size: 0.9rem;
+  color: #3b82f6;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.skill-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* Responsive */
+
+@media (max-width: 600px) {
+  .breakdown-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .skill-header {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .skill-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

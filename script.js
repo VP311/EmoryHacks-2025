@@ -159,6 +159,34 @@ new Chart(chartElement, {
             }
         }
     }
+
+
+    // SAT Breakdown navigation
+
+
+});
+
+
+    // -- WORK IN PROGRESS - DANIEL ---
+
+// SAT Breakdown navigation
+const showBreakdownBtn = document.getElementById("show-breakdown"); // You'll need to add this button
+const breakdownSection = document.getElementById("sat-breakdown");
+
+// Add a button to navigate to breakdown (optional)
+if (showBreakdownBtn) {
+  showBreakdownBtn.addEventListener("click", () => {
+    landingSection.classList.add("hidden");
+    trainerSection.classList.add("hidden");
+    breakdownSection.classList.remove("hidden");
+  });
+}
+
+// Click logo to go back home (update existing code)
+homeLink.addEventListener("click", () => {
+  trainerSection.classList.add("hidden");
+  breakdownSection.classList.add("hidden");
+  landingSection.classList.remove("hidden");
 });
 
 // --- END CHART.JS IMPLEMENTATION ---
