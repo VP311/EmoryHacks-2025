@@ -1486,3 +1486,36 @@ main {
     height: 2rem;
   }
 }
+
+/* ================================ */
+/* BREAKDOWN EMPTY STATE */
+/* ================================ */
+
+.empty-progress-container {
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 1.25rem;
+  padding: 3rem 2rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  text-align: center;
+  margin-top: 2rem;
+  animation: fadeInUp 0.6s ease;
+}
+
+.empty-progress-container h2 {
+  font-size: 1.75rem;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #e5e7eb;
+}
+
+.empty-progress-container p {
+  font-size: 1.05rem;
+  color: #9ca3af;
+  max-width: 500px;
+  margin: 0 auto 2rem;
+  line-height: 1.6;
+}
+
+.empty-progress-container .primary-btn {
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+}
