@@ -105,7 +105,10 @@
     <!-- Your Firebase init/login script can also be included here -->
     <!-- <script src="../firebase-init.js"></script> -->
 
-    <script src="gatcha.js"></script>
+    <script type="module">
+        import '../theme-loader.js';
+        import './gatcha.js';
+    </script>
 </body>
 
 </html>

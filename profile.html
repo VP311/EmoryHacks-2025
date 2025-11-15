@@ -109,9 +109,10 @@
   </div>
 
   <!-- JS -->
-  <script src="script.js"></script>
-  <script src="profile.js"></script>
   <script type="module">
+    import './script.js';
+    import './profile.js';
+    import './theme-loader.js';
     import { auth } from "./script.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
     

@@ -19,18 +19,34 @@ async function handleCredentialResponse(response) {
         alert("Failed to sign in. Please try again.");
     }
 }
-export function loadIndextPage(){
+export async function loadIndextPage(){
     if (localStorage.getItem("logged-in") == null){
         return;
     }
     
     // Use Firebase Auth state
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
             const userInfoEl = document.getElementById("userInfo");
             if (userInfoEl) {
+                // Try to load equipped icon
+                let iconSrc = '/img/profile-btn.png';
+                try {
+                    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js");
+                    const { db } = await import('./script.js');
+                    const prefsRef = doc(db, 'users', user.uid, 'preferences', 'settings');
+                    const prefsSnap = await getDoc(prefsRef);
+                    
+                    if (prefsSnap.exists() && prefsSnap.data().equippedIcon) {
+                        const equippedIconId = prefsSnap.data().equippedIcon;
+                        iconSrc = `rewards/icons/${equippedIconId.replace('icon-', '')}.png`;
+                    }
+                } catch (error) {
+                    console.error("Error loading equipped icon:", error);
+                }
+                
                 userInfoEl.innerHTML = `
-                    <p class="right-aligned">Welcome, <strong>${user.displayName || user.email}</strong><input type="image" src="/img/profile-btn.png" style="width:50px; height:50px;" onclick='window.location.replace("profile.html")'/></p>
+                    <p class="right-aligned">Welcome, <strong>${user.displayName || user.email}</strong><input type="image" src="${iconSrc}" id="nav-profile-img" style="width:50px; height:50px; border-radius:50%; object-fit:cover;" onclick='window.location.replace("profile.html")'/></p>
                 `;
             }
             
@@ -45,7 +61,7 @@ function loadProfilePage(){
     console.log("Logged in :thumbsup:");
 
     // Use Firebase Auth state
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         if (!user) {
             console.error("No user found");
             return;
@@ -58,13 +74,41 @@ function loadProfilePage(){
         if (profileNameEl) {
             profileNameEl.innerHTML = user.displayName || user.email || "Your Name";
         }
-        if (profilePictureEl) {
-            if (user.photoURL) {
-                profilePictureEl.innerHTML = `<img src="${user.photoURL}" style="height: 100%; width: 100%; border-radius:50%; opacity: 1"/>`
-            } else {
-                profilePictureEl.innerHTML = `<img src="/img/profile-btn.png" style="height: 100%; width: 100%; border-radius:50%; opacity: 1"/>`
+        
+        // Load equipped icon from Firestore
+        try {
+            const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js");
+            const { db } = await import('./script.js');
+            const prefsRef = doc(db, 'users', user.uid, 'preferences', 'settings');
+            const prefsSnap = await getDoc(prefsRef);
+            
+            let iconSrc = null;
+            if (prefsSnap.exists() && prefsSnap.data().equippedIcon) {
+                const equippedIconId = prefsSnap.data().equippedIcon;
+                iconSrc = `rewards/icons/${equippedIconId.replace('icon-', '')}.png`;
+            }
+            
+            if (profilePictureEl) {
+                if (iconSrc) {
+                    profilePictureEl.innerHTML = `<img src="${iconSrc}" style="height: 100%; width: 100%; border-radius:50%; opacity: 1; object-fit: cover;"/>`
+                } else if (user.photoURL) {
+                    profilePictureEl.innerHTML = `<img src="${user.photoURL}" style="height: 100%; width: 100%; border-radius:50%; opacity: 1"/>`
+                } else {
+                    profilePictureEl.innerHTML = `<img src="/img/profile-btn.png" style="height: 100%; width: 100%; border-radius:50%; opacity: 1"/>`
+                }
+            }
+        } catch (error) {
+            console.error("Error loading equipped icon:", error);
+            // Fallback to default
+            if (profilePictureEl) {
+                if (user.photoURL) {
+                    profilePictureEl.innerHTML = `<img src="${user.photoURL}" style="height: 100%; width: 100%; border-radius:50%; opacity: 1"/>`
+                } else {
+                    profilePictureEl.innerHTML = `<img src="/img/profile-btn.png" style="height: 100%; width: 100%; border-radius:50%; opacity: 1"/>`
+                }
             }
         }
+        
         if (profileEmailEl) {
             profileEmailEl.innerHTML = user.email || "email@example.com";
         }
