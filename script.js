@@ -24,7 +24,7 @@ const app = initializeApp(firebaseConfig);
 // Get references to the services 
 export const auth = getAuth(app); 
 export const db = getFirestore(app); 
-console.log(auth);
+console.log(db);
 const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 
@@ -32,7 +32,24 @@ let currentUserId = null;
 let currentUserProgress = {};
 let currentSessionId = null;
 
-
+function loadJSON(path, success, error)
+{
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function()
+    {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+                if (success)
+                    success(JSON.parse(xhr.responseText));
+            } else {
+                if (error)
+                    error(xhr);
+            }
+        }
+    };
+    xhr.open("GET", path, true);
+    xhr.send();
+}
 
 // Firebase Auth helper functions
 export async function signInWithGoogle(credential) {
@@ -42,11 +59,11 @@ export async function signInWithGoogle(credential) {
         const user = result.user;
         
         // Initialize user progress in Firestore if it doesn't exist
-        const userProgressRef = doc(db, 'users', user.uid, 'progress', 'data');
+        const userProgressRef = doc(db, 'Users', user.uid, 'progress', 'data');
         const userProgressSnap = await getDoc(userProgressRef);
-        
+
         if (!userProgressSnap.exists()) {
-            await setDoc(userProgressRef, {
+            await addDoc(userProgressRef, {
                 wrongQuestions: [],
                 skillScores: {},
                 sessions: [],
@@ -104,6 +121,15 @@ onAuthStateChanged(auth, async (user) => {
             }
 
             currentUserId = user.uid;
+
+            var userDoc = await getDoc(doc(db,'Users',currentUserId));
+            if (!userDoc.exists()){
+                loadJSON('./user.json',function(data){
+                    setDoc(doc(db,'Users',currentUserId),data);
+                    console.log("New info created")
+                });
+            }
+
             console.log("User is signed in:", user.uid);
 
             // 1. Hide Login Button, Show Profile Section (Fixes the visible button issue)
@@ -151,7 +177,7 @@ async function loadUserProgress() {
     if (!currentUserId) return;
     
     try {
-        const userProgressRef = doc(db, 'users', currentUserId, 'progress', 'data');
+        const userProgressRef = doc(db, 'Users', currentUserId, 'progress', 'data');
         const userProgressSnap = await getDoc(userProgressRef);
         
         if (userProgressSnap.exists()) {
@@ -306,7 +332,7 @@ export async function createSession() {
     if (!currentUserId) return null;
     
     try {
-        const sessionRef = await addDoc(collection(db, 'users', currentUserId, 'sessions'), {
+        const sessionRef = await addDoc(collection(db, 'Users', currentUserId, 'sessions'), {
             questions: [],
             answers: [],
             timestamp: new Date(),
@@ -324,7 +350,7 @@ export async function saveAnswerToSession(questionId, userAnswer, isCorrect, rat
     if (!currentUserId || !currentSessionId) return;
     
     try {
-        const sessionRef = doc(db, 'users', currentUserId, 'sessions', currentSessionId);
+        const sessionRef = doc(db, 'Users', currentUserId, 'sessions', currentSessionId);
         await updateDoc(sessionRef, {
             questions: arrayUnion(questionId),
             answers: arrayUnion({
@@ -344,8 +370,7 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
     if (!currentUserId) return;
     
     try {
-        const progressRef = doc(db, 'users', currentUserId, 'progress', 'data');
-        
+        const progressRef = doc(db, 'Users', currentUserId, 'progress', 'data');
         if (!isCorrect) {
             // Add to wrong questions if not already there
             await updateDoc(progressRef, {
@@ -355,6 +380,7 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
         
         // Update skill scores
         const progressSnap = await getDoc(progressRef);
+
         const currentProgress = progressSnap.data() || {};
         const skillScores = currentProgress.skillScores || {};
         
@@ -383,14 +409,14 @@ export async function completeSession() {
     if (!currentUserId || !currentSessionId) return;
     
     try {
-        const sessionRef = doc(db, 'users', currentUserId, 'sessions', currentSessionId);
+        const sessionRef = doc(db, 'Users', currentUserId, 'sessions', currentSessionId);
         await updateDoc(sessionRef, {
             completed: true,
             completedAt: new Date()
         });
         
         // Update progress sessions list
-        const progressRef = doc(db, 'users', currentUserId, 'progress', 'data');
+        const progressRef = doc(db, 'Users', currentUserId, 'progress', 'data');
         await updateDoc(progressRef, {
             sessions: arrayUnion(currentSessionId)
         });
@@ -438,7 +464,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then((result) => {
                 const user = result.user;
                 console.log("User signed in:", user.displayName, user.email);
-
+                
                 loadIndexPage();
             })
             .catch((error) => {
@@ -487,7 +513,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const q = questions[currentIndex];
-        questionText.textContent = q.questionText;
+        questionText.textContent = q.passage + "\n" + q.questionText;
         topicChip.textContent = q.type || q.topic || "Question";
         questionCounter.textContent = `Question ${currentIndex + 1} / ${questions.length}`;
         
