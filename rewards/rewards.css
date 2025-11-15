@@ -1,17 +1,134 @@
 /* ===== Global ===== */
-/*test */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #3b82f6;
+    --secondary-color: #1d4ed8;
+    --accent-color: #60a5fa;
+    --bg-gradient-start: #0f172a;
+    --bg-gradient-end: #020617;
+}
+
 body {
     margin: 0;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
         sans-serif;
-    background: #020617;
+    background: radial-gradient(circle at top, var(--bg-gradient-start, #0f172a), var(--bg-gradient-end, #020617) 55%);
     color: #e5e7eb;
+    display: flex;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 220px;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.95);
+    border-right: 1px solid rgba(148, 163, 184, 0.2);
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    box-sizing: border-box;
+}
+
+.sidebar-logo {
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 0.04em;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sidebar-logo span {
+    color: var(--primary-color, #3b82f6);
+}
+
+.sidebar-nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sidebar-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: #9ca3af;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+}
+
+.sidebar-nav-link:hover {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--primary-color, #3b82f6);
+}
+
+.sidebar-nav-link.active {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--primary-color, #3b82f6);
+    border-left: 3px solid var(--primary-color, #3b82f6);
+}
+
+.sidebar-nav-link svg {
+    width: 18px;
+    height: 18px;
+    margin-right: 0.75rem;
+    stroke: currentColor;
+    fill: none;
 }
 
 .rewards-app {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 2.25rem 1.5rem 3.5rem;
+    max-width: calc(100% - 220px);
+    margin: 0;
+    margin-left: 220px;
+    padding: 1.5rem 1.25rem 3rem;
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+/* Top Navigation */
+.top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.logo {
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+}
+
+.logo span {
+    color: var(--primary-color, #3b82f6);
+}
+
+.nav-tagline {
+    font-size: 0.9rem;
+    color: #9ca3af;
+}
+
+.rewards-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
 }
 
 .rewards-header h1 {
@@ -29,7 +146,6 @@ body {
 /* Centered main layout */
 
 .rewards-main {
-    margin-top: 2.25rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -239,13 +355,26 @@ body {
     border: 1px solid #374151;
     padding: 0.6rem 0.7rem;
     font-size: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.inventory-item.equipped {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
 }
 
 .inventory-item-header {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    margin-bottom: 0.25rem;
+    flex: 1;
+}
+
+.inventory-info {
+    flex: 1;
 }
 
 .inventory-icon {
@@ -267,6 +396,39 @@ body {
     color: #9ca3af;
 }
 
+.inventory-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.equip-btn {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #3b82f6;
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.equip-btn:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.6);
+}
+
+.equip-btn.unequip {
+    background: rgba(148, 163, 184, 0.15);
+    border-color: rgba(148, 163, 184, 0.4);
+    color: #94a3b8;
+}
+
+.equip-btn.unequip:hover {
+    background: rgba(148, 163, 184, 0.25);
+    border-color: rgba(148, 163, 184, 0.6);
+}
+
 /* ===== Modal ===== */
 
 .reward-modal.hidden {
@@ -279,7 +441,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 40;
+    z-index: 200;
 }
 
 .reward-backdrop {
@@ -379,8 +541,48 @@ body {
 
 /* ===== Responsive ===== */
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
+    .sidebar-nav {
+        width: 180px;
+    }
+    
     .rewards-app {
+        margin-left: 180px;
+        max-width: calc(100% - 180px);
+    }
+}
+
+@media (max-width: 640px) {
+    .sidebar-nav {
+        width: 60px;
+        padding: 1rem 0.5rem;
+    }
+    
+    .sidebar-logo {
+        font-size: 1.2rem;
+        text-align: center;
+    }
+    
+    .sidebar-logo span {
+        display: none;
+    }
+    
+    .sidebar-nav-link span {
+        display: none;
+    }
+    
+    .sidebar-nav-link {
+        justify-content: center;
+        padding: 0.75rem;
+    }
+    
+    .sidebar-nav-link svg {
+        margin-right: 0;
+    }
+    
+    .rewards-app {
+        margin-left: 60px;
+        max-width: calc(100% - 60px);
         padding-inline: 1.1rem;
     }
 }

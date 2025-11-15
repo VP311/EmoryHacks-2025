@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>StudyDeck – Adaptive SAT Trainer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+
+
+<body>
+  <!-- Sidebar Navigation -->
+  <nav class="sidebar-nav">
+    <div class="sidebar-logo">StudyDeck<span>.</span></div>
+    <div class="sidebar-nav-links">
+      <a href="index.html" class="sidebar-nav-link active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>Home</span>
+      </a>
+      <a href="breakdown.html" class="sidebar-nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="20" x2="12" y2="10"></line>
+          <line x1="18" y1="20" x2="18" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="16"></line>
+        </svg>
+        <span>Progress</span>
+      </a>
+      <a href="tests.html" class="sidebar-nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 7h16M4 12h16M4 17h10"></path>
+          <circle cx="18" cy="17" r="2"></circle>
+        </svg>
+        <span>Tests</span>
+      </a>
+      <a href="rewards/rewards.html" class="sidebar-nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+        </svg>
+        <span>Rewards</span>
+      </a>
+      <a href="profile.html" class="sidebar-nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span>Profile</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="app">
+
+    <!-- Navigation -->
+    <!-- Navigation -->
+    <header class="top-nav">
+      <div class="nav-left">
+        <div class="logo" id="home-link">StudyDeck<span>.</span></div>
+        <div class="nav-tagline">Smarter practice. Less time.</div>
+      </div>
+      <div class="nav-right">
+        <a href="breakdown.html" class="nav-btn">View Progress</a>
+        <a href="rewards/rewards.html" class="nav-btn">Rewards</a>
+        <!--Google Login-->
+        <div id="g_id_onload" data-client_id="1038908932530-vidvtvlcbpimnt0on6qo2kp0dc8tnomq.apps.googleusercontent.com"
+          data-callback="handleCredentialResponse">
+        </div>
+        <div id="userInfo">
+          <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with"
+            data-shape="rectangular" data-logo_alignment="center" id="signIn">
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+
+      <!-- ================================ -->
+      <!-- LANDING PAGE -->
+      <!-- ================================ -->
+
+      <section id="landing" class="landing">
+        <div class="hero">
+          <h1>5-minute SAT drills that learn how you think.</h1>
+          <p>
+            Answer short, Anki-style questions and we’ll learn which concepts
+            you struggle with so we can target your next session where it
+            matters most.
+          </p>
+          <button id="start-session" class="primary-btn">
+            Start a quick session
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ================================ -->
+      <!-- TRAINER SECTION -->
+      <!-- ================================ -->
+
+      <section id="trainer" class="trainer hidden">
+        <div class="card large">
+          <div class="session-meta">
+            <span class="chip" id="topic-chip">Topic: Loading...</span>
+            <span class="card-progress" id="question-counter">Question 0 / 0</span>
+          </div>
+          
+          <div class="card-question" id="card-question-text">
+            Loading question...
+          </div>
+
+          <!-- Multiple Choice Options -->
+          <div id="question-options" class="question-options">
+            <!-- Options will be dynamically inserted here -->
+          </div>
+
+          <!-- Rationale Section (shown when unsure) -->
+          <div id="rationale-section" class="rationale-section hidden">
+            <label class="card-label">Explain your reasoning:</label>
+            <textarea 
+              id="rationale-input" 
+              class="card-input" 
+              placeholder="Why did you choose this answer? What were you thinking?"
+              rows="4"
+            ></textarea>
+          </div>
+
+          <!-- Answer Feedback -->
+          <div id="answer-feedback" class="answer-feedback hidden">
+            <!-- Feedback will be shown here -->
+          </div>
+
+          <!-- AI Explanation Panel -->
+          <div id="ai-explanation-panel" class="ai-explanation-panel hidden">
+            <!-- AI explanation will be shown here -->
+          </div>
+
+          <div class="card-actions">
+            <button id="unsure-btn" class="ghost-btn">I'm unsure</button>
+            <button id="submit-answer" class="primary-btn">Submit Answer</button>
+            <button id="next-question" class="primary-btn hidden">Next Question</button>
+          </div>
+        </div>
+
+        <div class="trainer-sidebar">
+          <h2>Session Progress</h2>
+          <p class="sidebar-text">Your answers are being tracked to personalize future sessions.</p>
+          <ul class="sidebar-list" id="session-summary">
+            <!-- Session summary will be shown here -->
+          </ul>
+          <p class="sidebar-footnote">Questions adapt based on your performance.</p>
+        </div>
+      </section>
+
+      <!-- ================================ -->
+      <!-- SAT BREAKDOWN PAGE -->
+      <!-- ================================ -->
+
+
+
+    </main>
+  </div>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module">
+    import './script.js';
+    import './profile.js';
+    import './theme-loader.js';
+    import { loadIndexPage } from './profile.js';
+    loadIndexPage();
+  </script>
+  <!-- <script src="https://apis.google.com/js/platform.js" async defer></script> -->
+  <meta name="google-signin-client_id"
+    content="1038908932530-vidvtvlcbpimnt0on6qo2kp0dc8tnomq.apps.googleusercontent.com">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+
+</html>
