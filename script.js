@@ -32,7 +32,24 @@ let currentUserId = null;
 let currentUserProgress = {};
 let currentSessionId = null;
 
-
+function loadJSON(path, success, error)
+{
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function()
+    {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+                if (success)
+                    success(JSON.parse(xhr.responseText));
+            } else {
+                if (error)
+                    error(xhr);
+            }
+        }
+    };
+    xhr.open("GET", path, true);
+    xhr.send();
+}
 
 // Firebase Auth helper functions
 export async function signInWithGoogle(credential) {
@@ -46,7 +63,7 @@ export async function signInWithGoogle(credential) {
         const userProgressSnap = await getDoc(userProgressRef);
 
         if (!userProgressSnap.exists()) {
-            await setDoc(userProgressRef, {
+            await addDoc(userProgressRef, {
                 wrongQuestions: [],
                 wrongQuestionsByCategory: {
                     // SAT Math categories
@@ -113,6 +130,15 @@ onAuthStateChanged(auth, async (user) => {
             }
 
             currentUserId = user.uid;
+
+            var userDoc = await getDoc(doc(db,'Users',currentUserId));
+            if (!userDoc.exists()){
+                loadJSON('./user.json',function(data){
+                    setDoc(doc(db,'Users',currentUserId),data);
+                    console.log("New info created")
+                });
+            }
+
             console.log("User is signed in:", user.uid);
 
             // 1. Hide Login Button, Show Profile Section (Fixes the visible button issue)
@@ -456,6 +482,7 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
 
         // Update skill scores
         const progressSnap = await getDoc(progressRef);
+
         const currentProgress = progressSnap.data() || {};
         const skillScores = currentProgress.skillScores || {};
 
@@ -640,7 +667,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const q = questions[currentIndex];
-        questionText.textContent = q.questionText;
+        questionText.textContent = q.passage + "\n" + q.questionText;
         topicChip.textContent = q.type || q.topic || "Question";
         questionCounter.textContent = `Question ${currentIndex + 1} / ${questions.length}`;
 
