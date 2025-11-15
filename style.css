@@ -799,6 +799,14 @@ main {
   gap: 0.75rem;
 }
 
+/* Constrain score trend canvas to avoid large responsive height when no data */
+#score-trend {
+  height: 120px !important;
+  max-height: 160px;
+  width: 100% !important;
+  display: block;
+}
+
 .performance-text {
   font-size: 0.9rem;
   color: #9ca3af;
