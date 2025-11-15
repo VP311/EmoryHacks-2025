@@ -30,8 +30,9 @@
             </a>
             <a href="../tests.html" class="sidebar-nav-link">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 7h16M4 12h16M4 17h10"></path>
-                    <circle cx="18" cy="17" r="2"></circle>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
                 <span>Tests</span>
             </a>
@@ -64,7 +65,6 @@
             <div class="rewards-header">
                 <h1>Rewards Gacha</h1>
                 <p>Spend your study tickets to unlock avatars, themes, and more.</p>
-
             </div>
             <!-- Centered machine -->
             <section class="machine-section">
@@ -117,8 +117,6 @@
 
     <script type="module">
         import '../theme-loader.js';
-        import './gatcha.js';
-        import './loader.js';
         import './gatcha.js';
     </script>
 </body>
