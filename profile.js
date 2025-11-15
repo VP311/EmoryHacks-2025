@@ -30,9 +30,9 @@ async function handleCredentialResponse(response) {
     }
 }
 export async function loadIndexPage(){
-    if (localStorage.getItem("logged-in") == null){
-        return;
-    }
+    // if (localStorage.getItem("logged-in") == null){
+    //     return;
+    // }
     
     // Use Firebase Auth state
     onAuthStateChanged(auth, async (user) => {
@@ -67,7 +67,7 @@ export async function loadIndexPage(){
         }
     });
 }
-function loadProfilePage(){
+export function loadProfilePage(){
     console.log("Logged in :thumbsup:");
 
     // Use Firebase Auth state
