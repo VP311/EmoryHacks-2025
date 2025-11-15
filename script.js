@@ -160,15 +160,41 @@ async function loadUserProgress() {
     if (!currentUserId) return;
 
     try {
-        const userProgressRef = doc(db, 'users', currentUserId, 'progress', 'data');
-        const userProgressSnap = await getDoc(userProgressRef);
+        // Load from user document (skillScores is a map field)
+        const userRef = doc(db, 'users', currentUserId);
+        const userSnap = await getDoc(userRef);
 
-        if (userProgressSnap.exists()) {
-            currentUserProgress = userProgressSnap.data();
+        if (!userSnap.exists()) {
+            console.warn('⚠️ User document does not exist');
+            return;
         }
 
-        const accuracy = calculateSkillAccuracy(currentUserProgress.skillScores || {});
-        renderPerformanceChart(accuracy)
+        const userData = userSnap.data();
+        const skillScores = userData.skillScores || {};
+        const attemptedQuestions = userData.attemptedQuestions || [];
+        const wrongQuestions = [];
+        const wrongQuestionsByCategory = {};
+
+        // Extract wrong questions from each skill category
+        for (const [topicName, topicData] of Object.entries(skillScores)) {
+            if (topicData.incorrectQID && topicData.incorrectQID.length > 0) {
+                wrongQuestions.push(...topicData.incorrectQID);
+                wrongQuestionsByCategory[topicName] = topicData.incorrectQID;
+            }
+        }
+
+        // Update currentUserProgress with the loaded data
+        currentUserProgress = {
+            skillScores: skillScores,
+            wrongQuestions: wrongQuestions,
+            wrongQuestionsByCategory: wrongQuestionsByCategory,
+            attemptedQuestions: attemptedQuestions
+        };
+
+        console.log('✅ Loaded user progress:', currentUserProgress);
+
+        const accuracy = calculateSkillAccuracy(skillScores);
+        renderPerformanceChart(accuracy);
     } catch (error) {
         console.error("Error loading user progress:", error);
     }
@@ -207,36 +233,80 @@ let skillChart = null; //declare chart variable globally
 
 // Adaptive question selection based on user progress
 export async function getAdaptiveQuestions(count = 5) {
+    console.log('🎯 Getting adaptive questions, count:', count);
+
     if (!currentUserId) {
         // If not logged in, return random questions
         const allQuestions = await loadQuestionsFromFirestore();
+        console.log('📝 Not logged in, returning random questions:', allQuestions.length);
         return shuffleArray(allQuestions).slice(0, count);
     }
 
-    // Get user's wrong questions
+    // Get user's attempted questions to avoid duplicates
+    const attemptedQuestionIds = currentUserProgress.attemptedQuestions || [];
+    console.log('📋 Already attempted questions:', attemptedQuestionIds.length);
+
+    // Get user's weak areas (wrong questions)
     const wrongQuestionIds = currentUserProgress.wrongQuestions || [];
+    console.log('❌ Wrong questions:', wrongQuestionIds.length);
 
-    // Prioritize questions from weak areas
+    // Get user's skill scores to identify weak areas
+    const skillScores = currentUserProgress.skillScores || {};
+    const weakCategories = Object.keys(skillScores)
+        .filter(cat => {
+            const score = skillScores[cat];
+            return score.total > 0 && (score.correct / score.total) < 0.7; // Less than 70% accuracy
+        });
+    console.log('📉 Weak categories:', weakCategories);
+
+    // Load all questions
     const allQuestions = await loadQuestionsFromFirestore();
+    console.log('📚 Total questions in database:', allQuestions.length);
 
-    // Separate into wrong question categories and others
-    const wrongCategoryQuestions = allQuestions.filter(q =>
-        wrongQuestionIds.includes(q.id)
+    // Filter out already attempted questions
+    const unattemptedQuestions = allQuestions.filter(q =>
+        !attemptedQuestionIds.includes(q.id)
     );
-    const otherQuestions = allQuestions.filter(q =>
-        !wrongQuestionIds.includes(q.id)
+    console.log('✨ Unattempted questions:', unattemptedQuestions.length);
+
+    // If we're running low on unattempted questions, allow repeats
+    if (unattemptedQuestions.length < count) {
+        console.warn('⚠️ Running low on unattempted questions, including some repeats');
+        // Use all unattempted + fill with least recently attempted
+        const recentlyAttempted = allQuestions
+            .filter(q => attemptedQuestionIds.includes(q.id))
+            .slice(-count); // Get last N attempted
+        return shuffleArray([...unattemptedQuestions, ...recentlyAttempted]).slice(0, count);
+    }
+
+    // Prioritize questions from weak categories
+    const weakCategoryQuestions = unattemptedQuestions.filter(q => {
+        const qTags = q.tags || [];
+        return weakCategories.some(cat =>
+            qTags.some(tag => tag.toLowerCase().includes(cat.toLowerCase()))
+        );
+    });
+
+    // Separate remaining questions
+    const otherQuestions = unattemptedQuestions.filter(q =>
+        !weakCategoryQuestions.includes(q)
     );
 
-    // Mix: 60% from wrong areas, 40% random
-    const wrongCount = Math.ceil(count * 0.6);
-    const randomCount = count - wrongCount;
+    // Mix: 60% from weak areas, 40% from other areas
+    const weakCount = Math.min(Math.ceil(count * 0.6), weakCategoryQuestions.length);
+    const otherCount = count - weakCount;
+
+    console.log(`📊 Selecting ${weakCount} from weak areas, ${otherCount} from other areas`);
 
     const selected = [
-        ...shuffleArray(wrongCategoryQuestions).slice(0, wrongCount),
-        ...shuffleArray(otherQuestions).slice(0, randomCount)
+        ...shuffleArray(weakCategoryQuestions).slice(0, weakCount),
+        ...shuffleArray(otherQuestions).slice(0, otherCount)
     ];
 
-    return shuffleArray(selected).slice(0, count);
+    const finalQuestions = shuffleArray(selected).slice(0, count);
+    console.log('✅ Final questions selected:', finalQuestions.length);
+
+    return finalQuestions;
 }
 
 function calculateSkillAccuracy(skillScores) {
@@ -375,103 +445,130 @@ export async function saveAnswerToSession(questionId, userAnswer, isCorrect, rat
  * @param {Array<string>} tags - Question tags for categorization
  * @param {Object} question - Full question object with topic info
  */
-export async function updateUserProgress(questionId, isCorrect, skillCategory, tags, question) {
+export async function updateUserProgress(questionId, isCorrect, skillCategory, tags, question, userAnswer = null, rationale = '') {
     if (!currentUserId) return;
 
     try {
-        const progressRef = doc(db, 'users', currentUserId, 'progress', 'data');
-
         // Get the question category/topic for organizing wrong answers
         const questionTopic = question?.topic || skillCategory || 'Other';
 
-        if (!isCorrect) {
-            // Add to general wrong questions list
-            await updateDoc(progressRef, {
-                wrongQuestions: arrayUnion(questionId)
-            });
+        // Determine the category key from tags or topic
+        let categoryKey = questionTopic;
 
-            // Add to category-specific wrong questions (e.g., "Algebra", "Problem Solving & Data Analysis")
-            // Extract the skill name from the topic (e.g., "SAT_Math: Linear Equations" -> "Algebra" from tags)
-            let categoryKey = questionTopic;
+        // If we have tags, try to get more specific category
+        if (tags && tags.length > 0) {
+            // Map common tags to SAT skill categories
+            const tagToCategory = {
+                // Math categories
+                'algebra': 'Algebra',
+                'linear equations': 'Algebra',
+                'quadratic': 'Algebra',
+                'systems of equations': 'Algebra',
+                'advanced math': 'Advanced Math',
+                'functions': 'Advanced Math',
+                'polynomial': 'Advanced Math',
+                'exponential': 'Advanced Math',
+                'geometry': 'Geometry and Trigonometry',
+                'trigonometry': 'Geometry and Trigonometry',
+                'circles': 'Geometry and Trigonometry',
+                'triangles': 'Geometry and Trigonometry',
+                'data analysis': 'Problem-Solving and Data Analysis',
+                'statistics': 'Problem-Solving and Data Analysis',
+                'probability': 'Problem-Solving and Data Analysis',
+                'ratios': 'Problem-Solving and Data Analysis',
+                'percentages': 'Problem-Solving and Data Analysis',
+                // Reading & Writing categories
+                'craft and structure': 'Craft & Structure',
+                'words in context': 'Craft & Structure',
+                'text structure': 'Craft & Structure',
+                'purpose': 'Craft & Structure',
+                'information and ideas': 'Information and Ideas',
+                'central ideas': 'Information and Ideas',
+                'supporting details': 'Information and Ideas',
+                'inferences': 'Information and Ideas',
+                'standard english conventions': 'Conventions of Standard English',
+                'grammar': 'Conventions of Standard English',
+                'punctuation': 'Conventions of Standard English',
+                'sentence structure': 'Conventions of Standard English',
+                'expression of ideas': 'Expression of Ideas',
+                'rhetoric': 'Expression of Ideas',
+                'transitions': 'Expression of Ideas',
+                'style': 'Expression of Ideas'
+            };
 
-            // If we have tags, try to get more specific category
-            if (tags && tags.length > 0) {
-                // Map common tags to SAT skill categories
-                const tagToCategory = {
-                    // Math categories
-                    'algebra': 'Algebra',
-                    'linear equations': 'Algebra',
-                    'quadratic': 'Algebra',
-                    'systems of equations': 'Algebra',
-                    'advanced math': 'Advanced Math',
-                    'functions': 'Advanced Math',
-                    'polynomial': 'Advanced Math',
-                    'exponential': 'Advanced Math',
-                    'geometry': 'Geometry and Trigonometry',
-                    'trigonometry': 'Geometry and Trigonometry',
-                    'circles': 'Geometry and Trigonometry',
-                    'triangles': 'Geometry and Trigonometry',
-                    'data analysis': 'Problem-Solving and Data Analysis',
-                    'statistics': 'Problem-Solving and Data Analysis',
-                    'probability': 'Problem-Solving and Data Analysis',
-                    'ratios': 'Problem-Solving and Data Analysis',
-                    'percentages': 'Problem-Solving and Data Analysis',
-                    // Reading & Writing categories
-                    'craft and structure': 'Craft & Structure',
-                    'words in context': 'Craft & Structure',
-                    'text structure': 'Craft & Structure',
-                    'purpose': 'Craft & Structure',
-                    'information and ideas': 'Information and Ideas',
-                    'central ideas': 'Information and Ideas',
-                    'supporting details': 'Information and Ideas',
-                    'inferences': 'Information and Ideas',
-                    'standard english conventions': 'Conventions of Standard English',
-                    'grammar': 'Conventions of Standard English',
-                    'punctuation': 'Conventions of Standard English',
-                    'sentence structure': 'Conventions of Standard English',
-                    'expression of ideas': 'Expression of Ideas',
-                    'rhetoric': 'Expression of Ideas',
-                    'transitions': 'Expression of Ideas',
-                    'style': 'Expression of Ideas'
-                };
-
-                // Find matching category from tags
-                for (const tag of tags) {
-                    const lowerTag = tag.toLowerCase();
-                    if (tagToCategory[lowerTag]) {
-                        categoryKey = tagToCategory[lowerTag];
-                        break;
-                    }
+            // Find matching category from tags
+            for (const tag of tags) {
+                const lowerTag = tag.toLowerCase();
+                if (tagToCategory[lowerTag]) {
+                    categoryKey = tagToCategory[lowerTag];
+                    break;
                 }
             }
-
-            // Update category-specific wrong question IDs
-            const fieldName = `wrongQuestionsByCategory.${categoryKey.replace(/\s+/g, '_')}`;
-            await updateDoc(progressRef, {
-                [fieldName]: arrayUnion(questionId)
-            });
-
-            console.log(`Added question ${questionId} to wrong list for category: ${categoryKey}`);
         }
 
-        // Update skill scores
-        const progressSnap = await getDoc(progressRef);
-        const currentProgress = progressSnap.data() || {};
-        const skillScores = currentProgress.skillScores || {};
+        // Access the user document where skillScores is a map field
+        const userRef = doc(db, 'users', currentUserId);
+        const userSnap = await getDoc(userRef);
 
-        if (skillCategory) {
-            if (!skillScores[skillCategory]) {
-                skillScores[skillCategory] = { correct: 0, total: 0 };
-            }
-            skillScores[skillCategory].total += 1;
-            if (isCorrect) {
-                skillScores[skillCategory].correct += 1;
-            }
+        let userData = {};
+        if (!userSnap.exists()) {
+            console.warn('⚠️ User document does not exist, creating it...');
+            // Create the user document with initial structure
+            userData = {
+                attemptedQuestions: [],
+                skillScores: {},
+                createdAt: new Date()
+            };
+            await setDoc(userRef, userData);
+        } else {
+            userData = userSnap.data();
         }
 
-        await updateDoc(progressRef, {
-            skillScores: skillScores
-        });
+        const skillScores = userData.skillScores || {};
+        const currentTopic = skillScores[categoryKey] || { correct: 0, total: 0, incorrectQID: [] };
+
+        // Update the topic stats
+        const updatedTopic = {
+            correct: currentTopic.correct + (isCorrect ? 1 : 0),
+            total: currentTopic.total + 1,
+            incorrectQID: currentTopic.incorrectQID || []
+        };
+
+        // Add to incorrectQID if wrong and not already there
+        if (!isCorrect && !updatedTopic.incorrectQID.includes(questionId)) {
+            updatedTopic.incorrectQID.push(questionId);
+        }
+
+        // Track attempted questions
+        const attemptedQuestions = userData.attemptedQuestions || [];
+        if (!attemptedQuestions.includes(questionId)) {
+            attemptedQuestions.push(questionId);
+        }
+
+        // Store answer details if wrong (for review later)
+        const updateData = {
+            [`skillScores.${categoryKey}`]: updatedTopic,
+            attemptedQuestions: attemptedQuestions
+        };
+
+        if (!isCorrect && userAnswer) {
+            // Add to answers array with full details
+            const answerRecord = {
+                questionID: questionId,
+                userAnswer: userAnswer,
+                isCorrect: isCorrect,
+                rationale: rationale || '',
+                timestamp: new Date(),
+                category: categoryKey
+            };
+            
+            updateData['answers'] = arrayUnion(answerRecord);
+        }
+
+        // Update the user document
+        await updateDoc(userRef, updateData);
+
+        console.log(`✅ Updated ${categoryKey}: correct=${isCorrect}, questionId=${questionId}`);
 
         // Reload progress
         await loadUserProgress();
@@ -482,47 +579,102 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
 
 // Get all wrong question IDs for a specific category/skill
 export async function getWrongQuestionsByCategory(categoryName) {
-    if (!currentUserId) return [];
+    console.log('🔍 getWrongQuestionsByCategory called with:', categoryName);
+    console.log('🔍 currentUserId:', currentUserId);
+
+    if (!currentUserId) {
+        console.warn('⚠️ No currentUserId - user not logged in');
+        return [];
+    }
 
     try {
-        const progressRef = doc(db, 'users', currentUserId, 'progress', 'data');
-        const progressSnap = await getDoc(progressRef);
+        // Access the user document where skillScores is a map field
+        const userRef = doc(db, 'users', currentUserId);
+        console.log('📄 Fetching user doc from:', `users/${currentUserId}`);
 
-        if (!progressSnap.exists()) return [];
+        const userSnap = await getDoc(userRef);
 
-        const data = progressSnap.data();
-        const wrongQuestionsByCategory = data.wrongQuestionsByCategory || {};
+        if (!userSnap.exists()) {
+            console.warn('⚠️ User document does not exist');
+            return [];
+        }
 
-        // Normalize category name (replace spaces with underscores)
-        const categoryKey = categoryName.replace(/\s+/g, '_');
+        const userData = userSnap.data();
+        const skillScores = userData.skillScores || {};
+        const topicData = skillScores[categoryName];
 
-        return wrongQuestionsByCategory[categoryKey] || [];
+        console.log('📊 Topic data for', categoryName, ':', topicData);
+
+        const questionIds = topicData?.incorrectQID || [];
+        console.log('✅ Found question IDs:', questionIds);
+
+        return questionIds;
     } catch (error) {
-        console.error("Error getting wrong questions by category:", error);
+        console.error("❌ Error getting wrong questions by category:", error);
         return [];
     }
 }
 
 // Load full question data for wrong questions in a category
 export async function loadWrongQuestionsForCategory(categoryName) {
-    const questionIds = await getWrongQuestionsByCategory(categoryName);
+    console.log('📚 loadWrongQuestionsForCategory called with:', categoryName);
 
-    if (questionIds.length === 0) return [];
+    const questionIds = await getWrongQuestionsByCategory(categoryName);
+    console.log('📝 Question IDs to load:', questionIds);
+
+    if (questionIds.length === 0) {
+        console.log('⚠️ No question IDs found for this category');
+        return [];
+    }
 
     try {
-        // Fetch all questions from Firestore questions collection
-        const questionsRef = collection(db, 'questions');
-        const q = query(questionsRef, where('id', 'in', questionIds.slice(0, 10))); // Firestore 'in' query limited to 10
-        const querySnapshot = await getDocs(q);
-
-        const questions = [];
-        querySnapshot.forEach((doc) => {
-            questions.push(doc.data());
+        // Fetch user's answers to get their wrong answer details
+        const userRef = doc(db, 'users', currentUserId);
+        const userSnap = await getDoc(userRef);
+        const answers = userSnap.exists() ? userSnap.data().answers || [] : [];
+        
+        // Create a map of questionID -> answer details for quick lookup
+        const answerMap = {};
+        answers.forEach(answer => {
+            if (answer.questionID) {
+                answerMap[answer.questionID] = answer;
+            }
         });
+        
+        // Fetch questions by document ID (not by a field called 'id')
+        const questions = [];
+        
+        // Fetch each question individually (Firestore document IDs)
+        for (const questionId of questionIds.slice(0, 10)) {
+            try {
+                const questionRef = doc(db, 'questions', questionId);
+                const questionSnap = await getDoc(questionRef);
+                
+                if (questionSnap.exists()) {
+                    const questionData = questionSnap.data();
+                    console.log('📄 Found question:', questionId, questionData);
+                    
+                    // Add the document ID and user's answer to the data
+                    const questionWithAnswer = { 
+                        id: questionId, 
+                        ...questionData,
+                        userAnswer: answerMap[questionId]?.userAnswer || null,
+                        rationale: answerMap[questionId]?.rationale || '',
+                        timestamp: answerMap[questionId]?.timestamp || null
+                    };
+                    questions.push(questionWithAnswer);
+                } else {
+                    console.warn(`⚠️ Question not found: ${questionId}`);
+                }
+            } catch (err) {
+                console.error(`❌ Error fetching question ${questionId}:`, err);
+            }
+        }
 
+        console.log(`✅ Loaded ${questions.length} questions from Firestore`);
         return questions;
     } catch (error) {
-        console.error("Error loading wrong questions:", error);
+        console.error("❌ Error loading wrong questions:", error);
         return [];
     }
 }
@@ -569,6 +721,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const unsureBtn = document.getElementById("unsure-btn");
     const submitBtn = document.getElementById("submit-answer");
     const nextBtn = document.getElementById("next-question");
+    const endSessionBtn = document.getElementById("end-session-btn");
     const answerFeedback = document.getElementById("answer-feedback");
     const aiExplanationPanel = document.getElementById("ai-explanation-panel");
 
@@ -627,10 +780,30 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
     // Load a question onto the card
-    function loadQuestion() {
+    async function loadQuestion() {
+        // If we've reached the end of current batch, load more questions
         if (currentIndex >= questions.length) {
-            endSession();
-            return;
+            console.log('📚 Loading more questions...');
+            questionText.textContent = "Loading more questions...";
+
+            const newQuestions = await getAdaptiveQuestions(5);
+
+            if (newQuestions.length === 0) {
+                endSession();
+                return;
+            }
+
+            // Add new questions to the existing batch
+            questions.push(...newQuestions);
+            console.log(`✅ Added ${newQuestions.length} more questions. Total: ${questions.length}`);
+
+        }
+
+        // Show end session button after 5 questions
+        if (currentIndex >= 5) {
+            if (endSessionBtn) endSessionBtn.classList.remove('hidden');
+        } else {
+            if (endSessionBtn) endSessionBtn.classList.add('hidden');
         }
 
         const q = questions[currentIndex];
@@ -700,6 +873,16 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // End session button
+    if (endSessionBtn) {
+        endSessionBtn.addEventListener("click", async () => {
+            if (confirm("Are you sure you want to end this session?")) {
+                await endSession();
+            }
+        });
+    }
+
     // Submit answer
     if (submitBtn) {
         submitBtn.addEventListener("click", async () => {
@@ -731,7 +914,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 isCorrect,
                 currentQuestion.skillCategory,
                 currentQuestion.tags || [],
-                currentQuestion
+                currentQuestion,
+                selectedAnswer,
+                rationale
             );
 
             submitBtn.classList.add("disabled");
@@ -802,9 +987,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Next question
     if (nextBtn) {
-        nextBtn.addEventListener("click", () => {
+        nextBtn.addEventListener("click", async () => {
             currentIndex++;
-            loadQuestion();
+            await loadQuestion();
         });
     }
     function resetQuestionState() {
@@ -820,12 +1005,18 @@ document.addEventListener("DOMContentLoaded", () => {
         questionText.textContent = "Great work! We'll generate an adaptive follow-up based on your responses.";
         topicChip.textContent = "Session complete";
         questionCounter.textContent = "";
-        questionOptions.innerHTML = "";
+        questionOptions.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem;">
+                <button class="primary-btn" onclick="location.href='breakdown.html'">View Progress</button>
+                <button class="primary-btn" onclick="location.reload()">Start New Session</button>
+            </div>
+        `;
         answerFeedback.classList.add("hidden");
         aiExplanationPanel.classList.add("hidden");
         submitBtn.classList.add("hidden");
         nextBtn.classList.add("hidden");
-        nextBtn.textContent = "Done";
+        if (unsureBtn) unsureBtn.style.display = 'none';
+        rationaleSection.classList.add("hidden");
     }
 
 
