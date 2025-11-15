@@ -127,7 +127,7 @@ export function loadProfilePage() {
 }
 async function googleSignOut() {
     try {
-        await signOutUser();
+        await signOut(auth);
         console.log("Signed out of this site.");
         window.location.replace("index.html");
     } catch (error) {
@@ -139,6 +139,10 @@ async function googleSignOut() {
 window.handleCredentialResponse = handleCredentialResponse;
 
 document.addEventListener("DOMContentLoaded", () => {
+    const logoutBtn = document.getElementById("logout-btn");
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", googleSignOut);
+    }
     const homeLink = document.getElementById("home-link");
     if (homeLink) {
         homeLink.addEventListener("click", () => {
