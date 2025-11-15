@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>StudyDeck – Rewards Gacha</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="rewards.css" />
+</head>
+
+<body>
+    <div class="rewards-app">
+        <header class="rewards-header">
+            <h1>Rewards Gacha</h1>
+            <p>Spend your study tickets to unlock avatars, themes, and more.</p>
+        </header>
+
+        <main class="rewards-main">
+            <!-- Centered machine -->
+            <section class="machine-section">
+                <div class="ticket-bar">
+                    Tickets: <span id="ticket-count">3</span>
+                </div>
+
+                <div class="machine" id="machine">
+                    <div class="machine-top">
+                        <div class="machine-glass">
+                            <img src="gumball.png" alt="" class="gumball-pile-img">
+                        </div>
+                    </div>
+                    <div class="machine-bottom">
+                        <div class="machine-slot"></div>
+                        <div class="machine-handle"></div>
+                    </div>
+                </div>
+
+                <button id="roll-btn" class="roll-btn">ROLL GACHA</button>
+                <p class="hint-text">
+                    You’ll earn more tickets by completing study sessions.
+                </p>
+            </section>
+
+            <!-- Collection below -->
+            <section class="reward-section">
+                <h2>Your collection</h2>
+                <div class="inventory-grid" id="inventory-grid">
+                    <!-- filled by JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Reward popup modal -->
+    <div id="reward-modal" class="reward-modal hidden">
+        <div id="reward-backdrop" class="reward-backdrop"></div>
+        <div class="reward-modal-content">
+            <button id="modal-close" class="modal-close">&times;</button>
+            <h2 class="modal-title">You got a reward!</h2>
+            <div id="modal-reward-body" class="modal-reward-body">
+                <!-- pill inserted by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Your Firebase init/login script can also be included here -->
+    <!-- <script src="../firebase-init.js"></script> -->
+
+    <script src="gatcha.js"></script>
+</body>
+
+</html>
