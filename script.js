@@ -1,6 +1,42 @@
 // script.js
 // Handles "page" switching and prepares for later question logic
 
+//firebase imported functions
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+
+//configuration of firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyAkZiKfWJjMv-rcl-QIZb14m8BJhCbiB18",
+    authDomain: "hackathon2025-8af8d.firebaseapp.com",
+    projectId: "hackathon2025-8af8d",
+    storageBucket: "hackathon2025-8af8d.firebasestorage.app",
+    messagingSenderId: "1046790183508",
+    appId: "1:1046790183508:web:e45a9c8c6352c2a70a6bc1",
+    measurementId: "G-Y5HPZKDKQD"
+};
+
+// Initialize Firebase App
+const app = initializeApp(firebaseConfig);
+
+// Get references to the services 
+export const auth = getAuth(app); 
+export const db = getFirestore(app); 
+const analytics = getAnalytics(app); 
+
+let currentUserId = null;
+let currentUserProgress = {};
+
+// Example: listener
+document.getElementById('start-session').addEventListener('click', () => {
+    console.log("Start Session button clicked. Firebase is initialized!");
+    // authentication and session start logic
+});
+
+
+
 document.addEventListener("DOMContentLoaded", () => {
     // Grab the important sections
     const landingSection = document.getElementById("landing");
@@ -76,4 +112,54 @@ document.addEventListener("DOMContentLoaded", () => {
             nextBtn.textContent = "Done";
         }
     });
+    
+    // --- CHART.JS IMPLEMENTATION ---
+
+// 1. Get the placeholder element by its ID
+const chartElement = document.getElementById('snapshotChart');
+
+// 2. Define the data for the chart (change these numbers for the hackathon!)
+const chartData = {
+    labels: ['Reading', 'Writing', 'Math'],
+    datasets: [{
+        label: 'Accuracy %', 
+        data: [75, 80, 65],  // Example Accuracy Data
+        backgroundColor: [
+            'rgba(255, 99, 132, 0.7)', // Red
+            'rgba(54, 162, 235, 0.7)', // Blue
+            'rgba(255, 206, 86, 0.7)'  // Yellow
+        ],
+        borderWidth: 1
+    }]
+};
+
+// 3. Create the new chart
+new Chart(chartElement, {
+    type: 'bar', // We are creating a Bar Chart
+    data: chartData,
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100, // Max scale for percentages
+                ticks: {
+                    color: '#9ca3af' // Style the text to match your site's dark theme
+                }
+            },
+            x: {
+                ticks: {
+                    color: '#9ca3af'
+                }
+            }
+        },
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false 
+            }
+        }
+    }
+});
+
+// --- END CHART.JS IMPLEMENTATION ---
 });
