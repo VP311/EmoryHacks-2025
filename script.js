@@ -35,8 +35,6 @@ document.getElementById('start-session').addEventListener('click', () => {
     // authentication and session start logic
 });
 
-
-
 document.addEventListener("DOMContentLoaded", () => {
     // Grab the important sections
     const landingSection = document.getElementById("landing");

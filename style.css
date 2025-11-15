@@ -256,10 +256,14 @@ main {
 }
 
 .right-aligned {
-    display: block;
+    align-items: center;
     text-align: right;
     margin-left: auto;
     margin-right: 0;
+}
+
+#home-link{
+    cursor: pointer;
 }
 
 /* Utilities */

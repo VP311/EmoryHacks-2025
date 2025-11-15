@@ -22,8 +22,8 @@ function loadIndextPage(){
     var payload = JSON.parse(atob(jwt.split('.')[1]));
 
     document.getElementById("userInfo").innerHTML = `
-        <p class="right-aligned">Welcome, <strong>${payload.name}</strong></p>
-        <img src="${payload.picture}" class="right-aligned"/>
+        <p class="right-aligned">Welcome, <strong>${payload.name}</strong><input type="image" src="/img/profile-btn.png" style="width:50px; height:50px;" onclick='window.location.replace("profile.html")'/></p>
+        <!-- <img src="${payload.picture}" class="right-aligned"/> -->
     `;
 
     document.getElementById("signIn").remove();
@@ -35,7 +35,8 @@ function loadProfilePage(){
     var payload = JSON.parse(atob(jwt.split('.')[1]));
 
     document.getElementById("profile-name").innerHTML = payload.name;
-    document.getElementById("profile-picture").innerHTML = `<img src="${payload.picture}"/>`
+    // document.getElementById("profile-picture").innerHTML = `<img src="${payload.picture}" style="height: 120px; width: 120px; border-radius:50%"/>`
+    document.getElementById("profile-picture").innerHTML = `<img src="/img/profile-btn.png" style="height: 100%; width: 100%; border-radius:50%; opacity: 1"/>`
     document.getElementById("profile-email").innerHTML = payload.email;
 }
 function googleSignOut(){
@@ -46,3 +47,9 @@ function googleSignOut(){
 
     window.location.replace("indext.html");
 }
+
+document.addEventListener("DOMContentLoaded", () =>{
+    document.getElementById("home-link").addEventListener("click", () => {
+        window.location.replace("indext.html")
+    })
+})
