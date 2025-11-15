@@ -5,56 +5,33 @@
 // NOTE: If you use Firebase, include your firebase-init.js separately
 // and use onAuthStateChanged here to tie tickets/inventory to a uid.
 
-const rewardPool = [
-    {
-        id: "avatar-nerd-bunny",
-        type: "avatar",
-        name: "Nerd Bunny",
-        rarity: "rare",
-        icon: "🐰",
-        color: "#f97316",
-    },
-    {
-        id: "avatar-wizard-frog",
-        type: "avatar",
-        name: "Wizard Frog",
-        rarity: "rare",
-        icon: "🐸",
-        color: "#6366f1",
-    },
-    {
-        id: "theme-neon-night",
-        type: "theme",
-        name: "Neon Night",
-        rarity: "uncommon",
-        icon: "🌃",
-        color: "#22c55e",
-    },
-    {
-        id: "border-gold",
-        type: "border",
-        name: "Gold Card Frame",
-        rarity: "uncommon",
-        icon: "🟨",
-        color: "#facc15",
-    },
-    {
-        id: "font-bubbly",
-        type: "font",
-        name: "Bubbly Headings",
-        rarity: "common",
-        icon: "🔤",
-        color: "#eab308",
-    },
-    {
-        id: "mascot-ghost",
-        type: "mascot",
-        name: "Study Ghost",
-        rarity: "rare",
-        icon: "👻",
-        color: "#a855f7",
-    },
+const genericNames = [
+    "Pastel Blob",
+    "Soft Orb",
+    "Cloud Pop",
+    "Mint Puff",
+    "Sun Bubble",
+    "Moon Pearl",
+    "Sky Dot",
+    "Blush Marble",
+    "Citrus Puff",
+    "Berry Bubble",
+    "Frost Orb",
+    "Glow Pearl",
+    "Rose Pop",
+    "Aqua Marble",
+    "Nebula Dot"
 ];
+
+// Auto-generate rewards for icons 0–14
+const rewardPool = Array.from({ length: 15 }, (_, i) => ({
+    id: `icon-${i}`,
+    type: "avatar",
+    name: genericNames[i],     // 👈 neutral names
+    rarity: "common",
+    iconType: "image",
+    iconSrc: `icons/${i}.png`   // 👈 matches your actual files
+}));
 
 let tickets = 3;
 let inventory = [];
@@ -65,6 +42,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const machineEl = document.getElementById("machine");
     const gumballs = document.querySelectorAll(".gumball");
     const inventoryGridEl = document.getElementById("inventory-grid");
+    const homeLink = document.getElementById("home-link");
+    
+    // Home link click handler
+    if (homeLink) {
+        homeLink.addEventListener("click", () => {
+            window.location.href = "../indext.html";
+        });
+    }
 
     const rewardModal = document.getElementById("reward-modal");
     const modalCloseBtn = document.getElementById("modal-close");
@@ -89,8 +74,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 (item) => `
           <div class="inventory-item">
             <div class="inventory-item-header">
-              <div class="inventory-icon" style="background:${item.color}">
-                ${item.icon}
+              <div class="inventory-icon">
+                <img src="${item.iconSrc}" alt="${item.name}" style="width: 100%; height: 100%; object-fit: contain;">
               </div>
               <div>
                 <div class="inventory-name">${item.name}</div>
@@ -106,8 +91,8 @@ document.addEventListener("DOMContentLoaded", () => {
     function makeRewardPillHTML(reward) {
         return `
       <div class="reward-pill">
-        <div class="reward-icon" style="background:${reward.color}">
-          ${reward.icon}
+        <div class="reward-icon">
+          <img src="${reward.iconSrc}" alt="${reward.name}" style="width: 100%; height: 100%; object-fit: contain;">
         </div>
         <div class="reward-meta">
           <span class="reward-name">${reward.name}</span>

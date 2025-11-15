@@ -11,19 +11,81 @@ body {
     background: radial-gradient(circle at top, #0f172a, #020617 55%);
     color: #e5e7eb;
     min-height: 100vh;
+    display: flex;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 220px;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.95);
+    border-right: 1px solid rgba(148, 163, 184, 0.2);
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+}
+
+.sidebar-logo {
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 0.04em;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sidebar-logo span {
+    color: #3b82f6;
+}
+
+.sidebar-nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sidebar-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: #9ca3af;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+}
+
+.sidebar-nav-link:hover {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.sidebar-nav-link.active {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+    border-left: 3px solid #3b82f6;
+}
+
+.sidebar-nav-link svg {
+    width: 18px;
+    height: 18px;
+    margin-right: 0.75rem;
+    stroke: currentColor;
+    fill: none;
 }
 
 .app {
     max-width: 1100px;
     margin: 0 auto;
+    margin-left: 220px;
     padding: 1.5rem 1.25rem 3rem;
-}
-
-.top-nav {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 2rem;
+    flex: 1;
+    width: calc(100% - 220px);
 }
 
 .top-nav {
@@ -81,6 +143,43 @@ body {
 .nav-tagline {
     font-size: 0.9rem;
     color: #9ca3af;
+}
+
+/* Google Sign In Button Styling */
+#userInfo {
+    display: flex;
+    align-items: center;
+}
+
+#userInfo .g_id_signin {
+    border-radius: 0.75rem !important;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    filter: brightness(1);
+}
+
+#userInfo .g_id_signin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    filter: brightness(1.05);
+}
+
+#userInfo .g_id_signin:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Override Google's default button styles for better appearance */
+#userInfo iframe {
+    border-radius: 0.75rem !important;
+    border: none !important;
+}
+
+/* Style the Google button container */
+#userInfo > div {
+    border-radius: 0.75rem;
+    overflow: hidden;
 }
 
 /* Layout sections */
@@ -275,6 +374,139 @@ main {
     color: #9ca3af;
 }
 
+/* Question Options */
+.question-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1rem 0;
+}
+
+.option-item {
+    padding: 0.9rem 1rem;
+    border: 2px solid rgba(148, 163, 184, 0.3);
+    border-radius: 0.75rem;
+    background: rgba(15, 23, 42, 0.5);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.option-item:hover {
+    border-color: #60a5fa;
+    background: rgba(59, 130, 246, 0.1);
+    transform: translateX(4px);
+}
+
+.option-item.selected {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.option-item.correct {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.2);
+}
+
+.option-item.incorrect {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.option-label {
+    font-weight: 600;
+    color: #3b82f6;
+    min-width: 2rem;
+}
+
+.option-text {
+    flex: 1;
+    color: #e5e7eb;
+}
+
+/* Rationale Section */
+.rationale-section {
+    margin-top: 1rem;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Answer Feedback */
+.answer-feedback {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    animation: slideDown 0.3s ease;
+}
+
+.answer-feedback.correct {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.answer-feedback.incorrect {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+/* AI Explanation Panel */
+.ai-explanation-panel {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 0.75rem;
+    animation: slideDown 0.4s ease;
+}
+
+.ai-explanation-panel h3 {
+    margin: 0 0 0.75rem 0;
+    color: #3b82f6;
+    font-size: 1.1rem;
+}
+
+.ai-explanation-content {
+    color: #e5e7eb;
+    line-height: 1.6;
+}
+
+.highlight {
+    background: rgba(250, 204, 21, 0.3);
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.highlight:hover {
+    background: rgba(250, 204, 21, 0.5);
+}
+
+.option-reference {
+    color: #60a5fa;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.option-reference:hover {
+    color: #3b82f6;
+}
+
 /* Chips, badges, etc. */
 
 .session-meta {
@@ -328,7 +560,50 @@ main {
     }
 }
 
+@media (max-width: 900px) {
+    .sidebar-nav {
+        width: 180px;
+    }
+    
+    .app {
+        margin-left: 180px;
+        width: calc(100% - 180px);
+    }
+}
+
 @media (max-width: 600px) {
+    .sidebar-nav {
+        width: 60px;
+        padding: 1rem 0.5rem;
+    }
+    
+    .sidebar-logo {
+        font-size: 1.2rem;
+        text-align: center;
+    }
+    
+    .sidebar-logo span {
+        display: none;
+    }
+    
+    .sidebar-nav-link span {
+        display: none;
+    }
+    
+    .sidebar-nav-link {
+        justify-content: center;
+        padding: 0.75rem;
+    }
+    
+    .sidebar-nav-link svg {
+        margin-right: 0;
+    }
+    
+    .app {
+        margin-left: 60px;
+        width: calc(100% - 60px);
+    }
+    
     .hero h1 {
         font-size: 1.7rem;
     }

@@ -1,28 +1,95 @@
 // breakdown.js
+import { auth, db } from './script.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import { doc, getDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-// This will hold the user's actual scores (you'll get this from Firebase later)
+// This will hold the user's actual scores loaded from Firebase
 let userData = {
     math: {
-        totalScore: 800,
+        totalScore: 200,
         skills: [
-            { name: "Algebra", percentage: "35% of section, 13-15 questions", performance: "800-800", score: 800 },
-            { name: "Advanced Math", percentage: "35% of section, 13-15 questions", performance: "800-800", score: 800 },
-            { name: "Problem Solving & Data Analysis", percentage: "15% of section, 5-7 questions", performance: "800-800", score: 800 },
-            { name: "Geometry & Trigonometry", percentage: "15% of section, 5-7 questions", performance: "800-800", score: 800 }
+            { name: "Algebra", percentage: "35% of section, 13-15 questions", performance: "200-800", score: 200 },
+            { name: "Advanced Math", percentage: "35% of section, 13-15 questions", performance: "200-800", score: 200 },
+            { name: "Problem Solving & Data Analysis", percentage: "15% of section, 5-7 questions", performance: "200-800", score: 200 },
+            { name: "Geometry & Trigonometry", percentage: "15% of section, 5-7 questions", performance: "200-800", score: 200 }
         ]
     },
     reading: {
-        totalScore: 800,
+        totalScore: 200,
         skills: [
-            { name: "Craft and Structure", percentage: "28% of section, 13-15 questions", performance: "800-800", score: 800 },
-            { name: "Information and Ideas", percentage: "26% of section, 12-14 questions", performance: "800-800", score: 800 },
-            { name: "Standard English Conventions", percentage: "26% of section, 11-15 questions", performance: "800-800", score: 800 },
-            { name: "Expression of Ideas", percentage: "20% of section, 8-12 questions", performance: "800-800", score: 800 }
+            { name: "Craft and Structure", percentage: "28% of section, 13-15 questions", performance: "200-800", score: 200 },
+            { name: "Information and Ideas", percentage: "26% of section, 12-14 questions", performance: "200-800", score: 200 },
+            { name: "Standard English Conventions", percentage: "26% of section, 11-15 questions", performance: "200-800", score: 200 },
+            { name: "Expression of Ideas", percentage: "20% of section, 8-12 questions", performance: "200-800", score: 200 }
         ]
     }
 };
 
+// Load user progress from Firestore
+async function loadUserProgressFromFirestore(userId) {
+    try {
+        const progressRef = doc(db, 'users', userId, 'progress', 'data');
+        const progressSnap = await getDoc(progressRef);
+        
+        if (!progressSnap.exists()) {
+            console.log("No progress data found for user");
+            return;
+        }
+        
+        const progressData = progressSnap.data();
+        const skillScores = progressData.skillScores || {};
+        
+        // Calculate scores for each skill category
+        const mathSkills = userData.math.skills;
+        const readingSkills = userData.reading.skills;
+        
+        // Update math skills
+        mathSkills.forEach(skill => {
+            const skillName = skill.name;
+            const skillData = skillScores[skillName];
+            if (skillData && skillData.total > 0) {
+                const accuracy = (skillData.correct / skillData.total) * 100;
+                // Convert accuracy to SAT score (200-800 scale)
+                const satScore = 200 + (accuracy / 100) * 600;
+                skill.score = Math.round(satScore);
+                skill.performance = `${Math.max(200, Math.round(satScore - 30))}-${Math.min(800, Math.round(satScore + 30))}`;
+            }
+        });
+        
+        // Update reading skills
+        readingSkills.forEach(skill => {
+            const skillName = skill.name;
+            const skillData = skillScores[skillName];
+            if (skillData && skillData.total > 0) {
+                const accuracy = (skillData.correct / skillData.total) * 100;
+                const satScore = 200 + (accuracy / 100) * 600;
+                skill.score = Math.round(satScore);
+                skill.performance = `${Math.max(200, Math.round(satScore - 30))}-${Math.min(800, Math.round(satScore + 30))}`;
+            }
+        });
+        
+        // Calculate total scores (average of skills)
+        const mathAvg = mathSkills.reduce((sum, s) => sum + s.score, 0) / mathSkills.length;
+        const readingAvg = readingSkills.reduce((sum, s) => sum + s.score, 0) / readingSkills.length;
+        
+        userData.math.totalScore = Math.round(mathAvg);
+        userData.reading.totalScore = Math.round(readingAvg);
+        
+        // Update the UI
+        updateUserData(userData);
+    } catch (error) {
+        console.error("Error loading user progress:", error);
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+    // Load user progress from Firestore
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            loadUserProgressFromFirestore(user.uid);
+        }
+    });
+    
     const tabButtons = document.querySelectorAll(".tab-btn");
 
     tabButtons.forEach((button, index) => {
