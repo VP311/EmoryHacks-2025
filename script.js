@@ -131,13 +131,13 @@ onAuthStateChanged(auth, async (user) => {
 
             currentUserId = user.uid;
 
-            var userDoc = await getDoc(doc(db,'Users',currentUserId));
-            if (!userDoc.exists()){
-                loadJSON('./user.json',function(data){
-                    setDoc(doc(db,'Users',currentUserId),data);
-                    console.log("New info created")
-                });
-            }
+            // var userDoc = await getDoc(doc(db,'Users',currentUserId));
+            // if (!userDoc.exists()){
+            //     loadJSON('./user.json',function(data){
+            //         setDoc(doc(db,'Users',currentUserId),data);
+            //         console.log("New info created")
+            //     });
+            // }
 
             console.log("User is signed in:", user.uid);
 
@@ -610,15 +610,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (loginBtn) {
         loginBtn.addEventListener("click", async () => {
             signInWithPopup(auth, googleProvider)
-                .then((result) => {
+                .then(async (result) => {
                     const user = result.user;
                     console.log("User signed in:", user.displayName, user.email);
-                    //save to firestore
-                    const db = getFirestore();
-                    setDoc(doc(db, 'Users', user.uid), {
-                        name: user.displayName,
-                        email: user.email
+                    var userDoc = await getDoc(doc(db,'Users',currentUserId));
+                    if (!userDoc.exists()){
+                        loadJSON('./user.json',function(data){
+                        setDoc(doc(db,'Users',currentUserId),data);
+                        console.log("New info created")
                     });
+                }
                     console.log("User document created/updated in Firestore");
                     loadIndexPage();
                 })
