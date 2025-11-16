@@ -602,31 +602,10 @@ export async function getWrongQuestionsByCategory(categoryName) {
     }
 }
 
-// Load full question data for wrong questions in a category
 export async function loadWrongQuestionsForCategory(categoryName) {
-    const normalizeAnswer = str => String(str).trim().toLowerCase();
-    for (const questionId of questionIds.slice(0, 10)) {
-        const questionRef = doc(db, 'questions', questionId);
-        const questionSnap = await getDoc(questionRef);
-
-        if (questionSnap.exists()) {
-            const questionData = questionSnap.data();
-
-            const questionWithAnswer = {
-                id: questionId,
-                ...questionData,
-                userAnswer: answerMap[questionId]?.userAnswer || null,
-                normalizedUserAnswer: normalizeAnswer(answerMap[questionId]?.userAnswer || ''),
-                normalizedCorrectAnswer: normalizeAnswer(questionData.correctAnswer || ''),
-                rationale: answerMap[questionId]?.rationale || '',
-                timestamp: answerMap[questionId]?.timestamp || null
-            };
-            questions.push(questionWithAnswer);
-        }
-    }
-
     console.log('📚 loadWrongQuestionsForCategory called with:', categoryName);
 
+    // 1️⃣ Get the wrong question IDs first
     const questionIds = await getWrongQuestionsByCategory(categoryName);
     console.log('📝 Question IDs to load:', questionIds);
 
@@ -636,12 +615,12 @@ export async function loadWrongQuestionsForCategory(categoryName) {
     }
 
     try {
-        // Fetch user's answers to get their wrong answer details
+        // 2️⃣ Fetch user's answers
         const userRef = doc(db, 'users', currentUserId);
         const userSnap = await getDoc(userRef);
         const answers = userSnap.exists() ? userSnap.data().answers || [] : [];
 
-        // Create a map of questionID -> answer details for quick lookup
+        // 3️⃣ Map answers
         const answerMap = {};
         answers.forEach(answer => {
             if (answer.questionID) {
@@ -649,43 +628,36 @@ export async function loadWrongQuestionsForCategory(categoryName) {
             }
         });
 
-        // Fetch questions by document ID (not by a field called 'id')
+        // 4️⃣ Fetch questions
         const questions = [];
-
-        // Fetch each question individually (Firestore document IDs)
         for (const questionId of questionIds.slice(0, 10)) {
-            try {
-                const questionRef = doc(db, 'questions', questionId);
-                const questionSnap = await getDoc(questionRef);
+            const questionRef = doc(db, 'questions', questionId);
+            const questionSnap = await getDoc(questionRef);
 
-                if (questionSnap.exists()) {
-                    const questionData = questionSnap.data();
-                    console.log('📄 Found question:', questionId, questionData);
+            if (questionSnap.exists()) {
+                const questionData = questionSnap.data();
 
-                    // Add the document ID and user's answer to the data
-                    const questionWithAnswer = {
-                        id: questionId,
-                        ...questionData,
-                        userAnswer: answerMap[questionId]?.userAnswer || null,
-                        rationale: answerMap[questionId]?.rationale || '',
-                        timestamp: answerMap[questionId]?.timestamp || null
-                    };
-                    questions.push(questionWithAnswer);
-                } else {
-                    console.warn(`⚠️ Question not found: ${questionId}`);
-                }
-            } catch (err) {
-                console.error(`❌ Error fetching question ${questionId}:`, err);
+                const questionWithAnswer = {
+                    id: questionId,
+                    ...questionData,
+                    userAnswer: answerMap[questionId]?.userAnswer || null,
+                    rationale: answerMap[questionId]?.rationale || '',
+                    timestamp: answerMap[questionId]?.timestamp || null
+                };
+
+                questions.push(questionWithAnswer);
             }
         }
 
         console.log(`✅ Loaded ${questions.length} questions from Firestore`);
         return questions;
+
     } catch (error) {
         console.error("❌ Error loading wrong questions:", error);
         return [];
     }
 }
+
 
 export async function completeSession() {
     if (!currentUserId || !currentSessionId) return;
@@ -744,32 +716,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (loginBtn) {
         loginBtn.addEventListener("click", async () => {
-            try {
-                const result = await signInWithPopup(auth, googleProvider);
-                const user = result.user;
+            signInWithPopup(auth, googleProvider)
+                .then(async (result) => {
+                    const user = result.user;
 
-                // ✅ Set currentUserId immediately
-                currentUserId = user.uid;
+                    // ✅ Set currentUserId immediately
+                    currentUserId = user.uid;
 
-                console.log("User signed in:", user.displayName, user.email);
-                console.log("Firebase UID:", currentUserId);
+                    console.log("User signed in:", user.displayName, user.email);
+                    var userDoc = await getDoc(doc(db, 'Users', currentUserId));
+                    if (!userDoc.exists()) {
+                        loadJSON('./user.json', async function (data) {
+                            setDoc(doc(db, 'Users', currentUserId), data);
+                            console.log("New user document created in Firestore");
+                        });
+                    }
+                    console.log("User document created in Firestore");
 
-                // Check if user document exists
-                const userDocRef = doc(db, 'users', currentUserId);
-                const userDocSnap = await getDoc(userDocRef);
+                    loadIndexPage(); // Now safe to proceed
 
-                if (!userDocSnap.exists()) {
-                    loadJSON('./user.json', async function (data) {
-                        await setDoc(userDocRef, data);
-                        console.log("New user document created in Firestore");
-                    });
-                }
-
-                loadIndexPage(); // Now safe to proceed
-
-            } catch (error) {
-                console.error("Error signing in:", error.message);
-            }
+                })
+                .catch((error) => {
+                    console.error("Error signing in:", error.message);
+                });
         });
     }
 
