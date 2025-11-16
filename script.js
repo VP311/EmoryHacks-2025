@@ -184,16 +184,12 @@ async function loadUserProgress() {
     if (!currentUserId) return;
 
     try {
-        const userRef = doc(db, 'Users', currentUserId,);
-        const userSnap = await getDoc(userRef);
+        const userProgressRef = doc(db, 'Users', currentUserId, 'progress', 'data');
+        const userProgressSnap = await getDoc(userProgressRef);
 
-        if (!userSnap.exists()) {
-            console.warn("User document does not exist");
-            return;
+        if (userProgressSnap.exists()) {
+            currentUserProgress = userProgressSnap.data();
         }
-
-        const userData = userSnap.data();
-        const skillScores = userData.skillScores || {};
 
         const accuracy = calculateSkillAccuracy(skillScores);
         renderPerformanceChart(accuracy);
@@ -515,7 +511,7 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
         }
 
         // Get reference to user document
-        const userRef = doc(db, 'Users', currentUserId);
+        const userRef = doc(db, 'users', currentUserId);
 
         // Update skill scores in the user document
         const userSnap = await getDoc(userRef);
@@ -523,7 +519,6 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
         const skillScores = currentProgress.skillScores || {};
 
         // Update the specific skill category
-        categoryKey = skillCategory || (tags?.[0] || 'Other');
         if (!skillScores[categoryKey]) {
             skillScores[categoryKey] = { correct: 0, total: 0, incorrectQID: [] };
         }
@@ -533,6 +528,9 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
             skillScores[categoryKey].correct += 1;
         } else {
             // Add to incorrect questions array if not already present
+            if (!skillScores[categoryKey].incorrectQID) {
+                skillScores[categoryKey].incorrectQID = [];
+            }
             if (!skillScores[categoryKey].incorrectQID.includes(questionId)) {
                 skillScores[categoryKey].incorrectQID.push(questionId);
             }
@@ -608,10 +606,10 @@ export async function getWrongQuestionsByCategory(categoryName) {
     }
 }
 
+// Load full question data for wrong questions in a category
 export async function loadWrongQuestionsForCategory(categoryName) {
     console.log('📚 loadWrongQuestionsForCategory called with:', categoryName);
 
-    // 1️⃣ Get the wrong question IDs first
     const questionIds = await getWrongQuestionsByCategory(categoryName);
     console.log('📝 Question IDs to load:', questionIds);
 
@@ -621,12 +619,12 @@ export async function loadWrongQuestionsForCategory(categoryName) {
     }
 
     try {
-        // 2️⃣ Fetch user's answers
+        // Fetch user's answers to get their wrong answer details
         const userRef = doc(db, 'users', currentUserId);
         const userSnap = await getDoc(userRef);
         const answers = userSnap.exists() ? userSnap.data().answers || [] : [];
 
-        // 3️⃣ Map answers
+        // Create a map of questionID -> answer details for quick lookup
         const answerMap = {};
         answers.forEach(answer => {
             if (answer.questionID) {
@@ -634,36 +632,43 @@ export async function loadWrongQuestionsForCategory(categoryName) {
             }
         });
 
-        // 4️⃣ Fetch questions
+        // Fetch questions by document ID (not by a field called 'id')
         const questions = [];
+
+        // Fetch each question individually (Firestore document IDs)
         for (const questionId of questionIds.slice(0, 10)) {
-            const questionRef = doc(db, 'questions', questionId);
-            const questionSnap = await getDoc(questionRef);
+            try {
+                const questionRef = doc(db, 'questions', questionId);
+                const questionSnap = await getDoc(questionRef);
 
-            if (questionSnap.exists()) {
-                const questionData = questionSnap.data();
+                if (questionSnap.exists()) {
+                    const questionData = questionSnap.data();
+                    console.log('📄 Found question:', questionId, questionData);
 
-                const questionWithAnswer = {
-                    id: questionId,
-                    ...questionData,
-                    userAnswer: answerMap[questionId]?.userAnswer || null,
-                    rationale: answerMap[questionId]?.rationale || '',
-                    timestamp: answerMap[questionId]?.timestamp || null
-                };
-
-                questions.push(questionWithAnswer);
+                    // Add the document ID and user's answer to the data
+                    const questionWithAnswer = {
+                        id: questionId,
+                        ...questionData,
+                        userAnswer: answerMap[questionId]?.userAnswer || null,
+                        rationale: answerMap[questionId]?.rationale || '',
+                        timestamp: answerMap[questionId]?.timestamp || null
+                    };
+                    questions.push(questionWithAnswer);
+                } else {
+                    console.warn(`⚠️ Question not found: ${questionId}`);
+                }
+            } catch (err) {
+                console.error(`❌ Error fetching question ${questionId}:`, err);
             }
         }
 
         console.log(`✅ Loaded ${questions.length} questions from Firestore`);
         return questions;
-
     } catch (error) {
         console.error("❌ Error loading wrong questions:", error);
         return [];
     }
 }
-
 
 export async function completeSession() {
     if (!currentUserId || !currentSessionId) return;
@@ -702,7 +707,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const topicChip = document.getElementById("topic-chip");
     const questionCounter = document.getElementById("question-counter");
     const questionOptions = document.getElementById("question-options");
-    const answerInput = document.getElementById("answer-input");
     const rationaleSection = document.getElementById("rationale-section");
     const rationaleInput = document.getElementById("rationale-input");
     const unsureBtn = document.getElementById("unsure-btn");
@@ -725,29 +729,27 @@ document.addEventListener("DOMContentLoaded", () => {
             signInWithPopup(auth, googleProvider)
                 .then(async (result) => {
                     const user = result.user;
-
-                    // ✅ Set currentUserId immediately
-                    currentUserId = user.uid;
-
                     console.log("User signed in:", user.displayName, user.email);
-                    var userDoc = await getDoc(doc(db, 'Users', currentUserId));
-                    if (!userDoc.exists()) {
-                        loadJSON('./user.json', async function (data) {
-                            setDoc(doc(db, 'Users', currentUserId), data);
-                            console.log("New user document created in Firestore");
-                        });
-                    }
-                    console.log("User document created in Firestore");
-
-                    loadIndexPage(); // Now safe to proceed
-
+                    var userDoc = await getDoc(doc(db,'Users',currentUserId));
+                    if (!userDoc.exists()){
+                        loadJSON('./user.json',function(data){
+                        setDoc(doc(db,'Users',currentUserId),data);
+                        console.log("New info created")
+                    });
+                }
+                    console.log("User document created/updated in Firestore");
+                    loadIndexPage();
                 })
                 .catch((error) => {
                     console.error("Error signing in:", error.message);
                 });
+            // try {
+            //     await signInWithRedirect(auth, googleProvider);
+            // } catch (error) {
+            //     console.error("Sign-in redirect initiation error:", error);
+            // }
         });
     }
-
 
     // Switch from landing → trainer
     if (startBtn) {
@@ -777,93 +779,38 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // Load a question onto the card
     async function loadQuestion() {
-    // Check if we need to load more questions
-    if (currentIndex >= questions.length) {
-        console.log('📚 Loading more questions...');
-        questionText.innerHTML = "<em>Loading more questions...</em>";
+        // If we've reached the end of current batch, load more questions
+        if (currentIndex >= questions.length) {
+            console.log('📚 Loading more questions...');
+            questionText.textContent = "Loading more questions...";
 
-        const newQuestions = await getAdaptiveQuestions(5);
+            const newQuestions = await getAdaptiveQuestions(5);
 
-        if (newQuestions.length === 0) {
-            endSession();
-            return;
-        }
-
-        questions.push(...newQuestions);
-        console.log(`✅ Added ${newQuestions.length} more questions. Total: ${questions.length}`);
-    }
-
-    // Show/hide end session button after 5 questions
-    if (endSessionBtn) {
-        if (currentIndex >= 5) {
-            endSessionBtn.classList.remove('hidden');
-        } else {
-            endSessionBtn.classList.add('hidden');
-        }
-    }
-
-    const q = questions[currentIndex];
-
-    // Clear previous question content
-    questionText.innerHTML = "";
-
-    // Wrapper div for question content
-    const wrapper = document.createElement('div');
-    wrapper.classList.add('question-content');
-
-    // Add passage if exists
-    if (q.passage) {
-        const passageEl = document.createElement('p');
-        passageEl.textContent = q.passage;
-        wrapper.appendChild(passageEl);
-    }
-
-    // Add image if it exists
-    if (q.isImageQuestion && q.imageUrl) {
-        const imgEl = document.createElement('img');
-        imgEl.src = q.imageUrl;
-        imgEl.alt = "Question Image";
-        imgEl.classList.add('question-image');
-        imgEl.style.maxWidth = "100%";
-        wrapper.appendChild(imgEl);
-    }
-
-    // Add question text
-    if (q.questionText) {
-        const qTextEl = document.createElement('p');
-        qTextEl.textContent = q.questionText;
-        wrapper.appendChild(qTextEl);
-    }
-
-    // Append the wrapper to the container
-    questionText.appendChild(wrapper);
-
-    // Update topic and question counter
-    topicChip.textContent = q.type || q.topic || "Question";
-    questionCounter.textContent = `Question ${currentIndex + 1} / ${questions.length}`;
-
-        // Render options first to check what gets rendered
-        renderOptions(q);
-
-        // Check if options were actually rendered (has .option-item elements)
-        const hasRenderedOptions = questionOptions && questionOptions.querySelector('.option-item');
-        const answerInputSection = document.querySelector('.answer-input-section');
-
-        console.log('Question:', q.questionText?.substring(0, 50));
-        console.log('Has options array:', q.options?.length || 0);
-        console.log('Has rendered option items:', hasRenderedOptions ? 'yes' : 'no');
-
-        if (answerInputSection) {
-            if (hasRenderedOptions) {
-                // Has clickable options - hide text input
-                answerInputSection.style.display = 'none';
-                console.log('Hiding text input, showing clickable options');
-            } else {
-                // No clickable options - show text input for user to type answer
-                answerInputSection.style.display = 'block';
-                console.log('Showing text input for free response');
+            if (newQuestions.length === 0) {
+                endSession();
+                return;
             }
+
+            // Add new questions to the existing batch
+            questions.push(...newQuestions);
+            console.log(`✅ Added ${newQuestions.length} more questions. Total: ${questions.length}`);
+
         }
+
+        // Show end session button after 5 questions
+        if (currentIndex >= 5) {
+            if (endSessionBtn) endSessionBtn.classList.remove('hidden');
+        } else {
+            if (endSessionBtn) endSessionBtn.classList.add('hidden');
+        }
+
+        const q = questions[currentIndex];
+        questionText.textContent = q.passage + "\n" + q.questionText;
+        topicChip.textContent = q.type || q.topic || "Question";
+        questionCounter.textContent = `Question ${currentIndex + 1} / ${questions.length}`;
+
+        // Render options
+        renderOptions(q);
 
         // Reset state
         selectedAnswer = null;
@@ -874,30 +821,15 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.classList.remove("hidden");
         nextBtn.classList.add("hidden");
 
-        // Clear text input
-        if (answerInput) {
-            answerInput.value = '';
-            answerInput.classList.remove('correct', 'incorrect');
-            answerInput.disabled = false;
-            // Auto-focus the input for non-multiple choice questions
-            // Re-check after rendering
-            const hasOptions = questionOptions && questionOptions.querySelector('.option-item');
-            if (!hasOptions) {
-                setTimeout(() => answerInput.focus(), 100);
-            }
-        }
-
-    // Clear previous option selections
-    document.querySelectorAll('.option-item').forEach(item => {
-        item.classList.remove('selected', 'correct', 'incorrect');
-    });
-}
-
+        // Clear option selections
+        document.querySelectorAll('.option-item').forEach(item => {
+            item.classList.remove('selected', 'correct', 'incorrect');
+        });
+    }
 
     function renderOptions(question) {
-        // If no options or only 1 option (placeholder), treat as free response
-        if (!question.options || question.options.length === 0 || question.options.length === 1) {
-            questionOptions.innerHTML = '';
+        if (!question.options || question.options.length === 0) {
+            questionOptions.innerHTML = '<p>No options available for this question.</p>';
             return;
         }
 
@@ -925,20 +857,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Handle text input for answers (for non-multiple choice questions)
-    if (answerInput) {
-        answerInput.addEventListener('input', (e) => {
-            const value = e.target.value.trim();
-            selectedAnswer = value || null;
-        });
-
-        // Also support Enter key to submit
-        answerInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && selectedAnswer && submitBtn && !submitBtn.classList.contains('hidden')) {
-                submitBtn.click();
-            }
-        });
-    }    // Unsure button
+    // Unsure button
     if (unsureBtn) {
         unsureBtn.addEventListener("click", () => {
             isUnsure = !isUnsure;
@@ -974,11 +893,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const currentQuestion = questions[currentIndex];
-            const normalize = str => String(str).trim().toLowerCase();
-            const selectedOptionText = currentQuestion.options[selectedAnswer.charCodeAt(0) - 65]; // "A" -> index 0
-
-            const isCorrect = normalize(selectedOptionText) === normalize(currentQuestion.correctAnswer);
-
+            const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
             const rationale = isUnsure ? rationaleInput.value : '';
 
             // Show feedback
@@ -1014,27 +929,24 @@ document.addEventListener("DOMContentLoaded", () => {
             nextBtn.classList.remove("hidden");
         });
     }
-
     function showAnswerFeedback(isCorrect, question) {
-        const normalize = str => String(str).trim().toLowerCase();
-
         answerFeedback.classList.remove("hidden");
         answerFeedback.className = `answer-feedback ${isCorrect ? 'correct' : 'incorrect'}`;
 
         if (isCorrect) {
-            answerFeedback.innerHTML = `<strong>✓ Correct!</strong> ${question.explanation || 'Great job!'}`;
+            answerFeedback.innerHTML = `
+                <strong>✓ Correct!</strong> ${question.explanation || 'Great job!'}
+            `;
         } else {
             answerFeedback.innerHTML = `
-            <strong>✗ Incorrect.</strong> The correct answer is <strong>${question.correctAnswer}</strong>.
-        `;
+                <strong>✗ Incorrect.</strong> The correct answer is <strong>${question.correctAnswer}</strong>.
+            `;
         }
 
         // Highlight correct/incorrect options
         document.querySelectorAll('.option-item').forEach(item => {
-            const optionLabel = item.dataset.option; // "A", "B", ...
-            const optionText = item.querySelector('.option-text')?.textContent || "";
-
-            if (normalize(optionText) === normalize(question.correctAnswer)) {
+            const optionLabel = item.dataset.option;
+            if (optionLabel === question.correctAnswer) {
                 item.classList.add('correct');
             } else if (optionLabel === selectedAnswer) {
                 item.classList.add('incorrect');

@@ -88,38 +88,53 @@ const themePool = [
     }
 ];
 
+function getThemeByName(name){
+    for (var i of themePool){
+        if (i.name == name){
+            return i;
+        }
+    }
+    return null;
+}
+
+function getIconByName(name){
+    for (var i of rewardPool){
+        if (i.name == name){
+            return i;
+        }
+    }
+    return null;
+}
+
 // Combine all rewards - this is our reference pool
 const allRewardPool = [...rewardPool, ...themePool];
 
 let tickets = 0;
 let inventory = [];
-let equippedIcon = null;
-let equippedTheme = null;
-let currentUserId = null;
+let equippedIcon = "";
+let equippedTheme = "";
+let currentUserId = "";
 
 // Load user inventory and equipped items from Firestore
 async function loadUserInventory(userId) {
     try {
-        const inventoryRef = doc(db, 'users', userId, 'rewards', 'inventory');
-        const inventorySnap = await getDoc(inventoryRef);
+        const userInfoRef = doc(db, 'Users', userId);
+        const userInfoSnap = await getDoc(userInfoRef);
 
-        if (inventorySnap.exists()) {
-            const data = inventorySnap.data();
-            inventory = data.items || []; // Array of item name strings
-            equippedIcon = data.equippedIcon || null; // Item name string
-            equippedTheme = data.equippedTheme || null; // Item name string
+        if (userInfoSnap.exists()) {
+            const data = userInfoSnap.data();
+            console.log(data.rewards.items);
+            inventory = data.rewards.items || []; // Array of item name strings
+            
+            equippedIcon = data.rewards.equippedIcon || ""; // Item name string
+            equippedTheme = data.rewards.equippedTheme || ""; // Item name string
 
             // Apply equipped theme
             if (equippedTheme) {
                 applyTheme(equippedTheme);
             }
-        } else {
-            // Initialize inventory
-            await setDoc(inventoryRef, {
-                items: [],
-                equippedIcon: null,
-                equippedTheme: null
-            });
+
+
         }
     } catch (error) {
         console.error("Error loading inventory:", error);
@@ -129,12 +144,11 @@ async function loadUserInventory(userId) {
 // Save inventory to Firestore
 async function saveInventory(userId) {
     try {
-        const inventoryRef = doc(db, 'users', userId, 'rewards', 'inventory');
-        await updateDoc(inventoryRef, {
-            items: inventory,
-            equippedIcon: equippedIcon,
-            equippedTheme: equippedTheme
-        });
+        const userInfoRef = doc(db, 'Users', userId);
+        const userInfoData = (await getDoc(userInfoRef)).data();
+        userInfoData.rewards.items = inventory;
+
+        await updateDoc(userInfoRef, userInfoData);
     } catch (error) {
         console.error("Error saving inventory:", error);
     }
@@ -148,18 +162,19 @@ async function equipItem(itemName, itemType) {
         equippedIcon = itemName;
     } else if (itemType === 'theme') {
         equippedTheme = itemName;
-        applyTheme(itemName);
+        // applyTheme(itemName);
     }
 
-    await saveInventory(currentUserId);
-    renderInventory();
-
     // Save equipped icon to user preferences for profile page
-    const prefsRef = doc(db, 'users', currentUserId, 'preferences', 'settings');
-    await setDoc(prefsRef, {
-        equippedIcon: equippedIcon,
-        equippedTheme: equippedTheme
-    }, { merge: true });
+
+    const userInfoRef = doc(db, 'Users', currentUserId);
+    const userInfoData = (await getDoc(userInfoRef)).data();
+
+    userInfoData.rewards.equippedIcon = equippedIcon || "-";
+    userInfoData.rewards.equippedTheme = equippedTheme || "-";
+
+    await setDoc(userInfoRef, userInfoData);
+    window.location.reload();
 }
 
 // Unequip an item
@@ -167,25 +182,25 @@ async function unequipItem(itemType) {
     if (!currentUserId) return;
 
     if (itemType === 'avatar') {
-        equippedIcon = null;
+        equippedIcon = "";
     } else if (itemType === 'theme') {
-        equippedTheme = null;
-        removeTheme();
+        equippedTheme = "";
+        // removeTheme();
     }
 
-    await saveInventory(currentUserId);
-    renderInventory();
+    const userInfoRef = doc(db, 'Users', currentUserId);
+    const userInfoData = (await getDoc(userInfoRef)).data();
 
-    const prefsRef = doc(db, 'users', currentUserId, 'preferences', 'settings');
-    await setDoc(prefsRef, {
-        equippedIcon: equippedIcon,
-        equippedTheme: equippedTheme
-    }, { merge: true });
+    userInfoData.rewards.equippedIcon = equippedIcon;
+    userInfoData.rewards.equippedTheme = equippedTheme;
+
+    await setDoc(userInfoRef, userInfoData);
+    window.location.reload();
 }
 
 // Apply theme CSS variables (themeName is the string name)
-function applyTheme(themeName) {
-    const theme = getItemByName(themeName);
+export function applyTheme(themeName) {
+    const theme = getThemeByName(themeName);
     if (!theme || !theme.cssVariables) return;
 
     const root = document.documentElement;
@@ -210,7 +225,7 @@ function removeTheme() {
     document.body.style.background = 'radial-gradient(circle at top, #0f172a, #020617 55%)';
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     const ticketCountEl = document.getElementById("ticket-count");
     const rollBtn = document.getElementById("roll-btn");
     const machineEl = document.getElementById("machine");
@@ -239,12 +254,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const userSnap = await getDoc(userRef);
             if (userSnap.exists()) {
                 const userData = userSnap.data();
-                tickets = data.points ?? 0;
-                updateTickets
+                tickets = userData.points;
+                equippedIcon = userData.rewards.equippedIcon;
+                equippedTheme = userData.rewards.equippedTheme;
+                updateTickets();
             } else {
                 console.warn("User document not found, initializing with 0 tickets");
             }
             renderInventory();
+            applyTheme();
         } else {
             currentUserId = null;
             inventory = [];
@@ -254,10 +272,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     function updateTickets() {
-        if (ticketCountEl) ticketCountEl.textContent = tickets;
+        ticketCountEl.textContent = tickets;
     }
 
-    function renderInventory() {
+    window.renderInventory = function() {
         if (!inventoryGridEl) return;
 
         if (inventory.length === 0) {
@@ -270,8 +288,11 @@ document.addEventListener("DOMContentLoaded", () => {
             .map(
                 (itemName) => {
                     // Fetch item details from name
-                    const item = getItemByName(itemName);
+                    
+                    const item = getIconByName(itemName.replace("icon-","")) || getThemeByName(itemName.replace("theme-",""));
                     if (!item) return ''; // Skip if item not found
+
+                    itemName = itemName.replace("theme-","").replace("icon-","");
 
                     const isEquipped = (item.type === 'avatar' && equippedIcon === itemName) ||
                         (item.type === 'theme' && equippedTheme === itemName);
@@ -293,8 +314,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
             </div>
           </div>
-        `;
-                }
+        `}
             )
             .join("");
 
@@ -348,9 +368,9 @@ document.addEventListener("DOMContentLoaded", () => {
         updateTickets();
         if (currentUserId) {
             const userRef = doc(db, "Users", currentUserId);
-            await updateDoc(userRef, {
-                points: tickets
-            });
+            const userData = (await getDoc(userRef)).data();
+            userData.points = tickets;
+            await updateDoc(userRef, userData);
         }
 
         // Randomly choose between icon and theme (80% icon, 20% theme)
@@ -360,8 +380,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const reward = pool[idx];
 
         // Add to inventory if not already (store just the name string)
-        if (!inventory.includes(reward.name)) {
-            inventory.push(reward.name);
+        if (!inventory.some(item => ((isTheme ? "theme-" : "icon-") + reward.name) === item)) {
+            inventory.push((isTheme ? "theme-" : "icon-") + reward.name);
 
             // Save to Firestore if logged in
             if (currentUserId) {
@@ -369,6 +389,17 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             renderInventory();
+        } else {
+            alert("Duplicate item rolled - Refunding points!");
+
+            tickets++;
+            updateTickets();
+            if (currentUserId) {
+                const userRef = doc(db, "Users", currentUserId);
+                const userData = (await getDoc(userRef)).data();
+                userData.points = tickets;
+                await updateDoc(userRef, userData);
+            }
         }
 
         return reward;
