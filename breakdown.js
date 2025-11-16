@@ -67,7 +67,7 @@ async function loadUserProgressFromFirestore(userId) {
             showEmptyState(); // Show welcome message
             return;
         }
-        
+
         console.log('✅ User document exists!');
 
         const userData_firebase = userSnap.data();
@@ -111,36 +111,36 @@ async function loadUserProgressFromFirestore(userId) {
         mathSkills.forEach(skill => {
             const skillName = skill.name;
             console.log(`\n🔍 Looking for skill: "${skillName}"`);
-            
+
             // Try exact match first
             let skillData = skillScores[skillName];
             console.log(`  Exact match result:`, skillData);
-            
+
             // Try with spaces replaced by dashes
             if (!skillData) {
                 const dashName = skillName.replace(/ /g, '-');
                 skillData = skillScores[dashName];
                 console.log(`  Trying "${dashName}":`, skillData);
             }
-            
+
             // Try with & replaced by 'and'
             if (!skillData) {
                 const andName = skillName.replace(/&/g, 'and');
                 skillData = skillScores[andName];
                 console.log(`  Trying "${andName}":`, skillData);
             }
-            
+
             // If still not found, try finding any key that contains the main words
             if (!skillData) {
                 const mainWord = skillName.split(' ')[0].toLowerCase();
                 console.log(`  Searching for keys containing "${mainWord}"...`);
-                const matchingKey = Object.keys(skillScores).find(key => 
+                const matchingKey = Object.keys(skillScores).find(key =>
                     key.toLowerCase().includes(mainWord)
                 );
                 console.log(`  Found matching key:`, matchingKey);
                 if (matchingKey) skillData = skillScores[matchingKey];
             }
-            
+
             console.log(`  Final skillData for "${skillName}":`, skillData);
             if (skillData && skillData.total > 0) {
                 const accuracy = (skillData.correct / skillData.total) * 100;
@@ -159,19 +159,19 @@ async function loadUserProgressFromFirestore(userId) {
         readingSkills.forEach(skill => {
             const skillName = skill.name;
             // Try multiple variations of the skill name
-            let skillData = skillScores[skillName] || 
-                           skillScores[skillName.replace(/ /g, '-')] || 
-                           skillScores[skillName.replace(/&/g, 'and')];
-            
+            let skillData = skillScores[skillName] ||
+                skillScores[skillName.replace(/ /g, '-')] ||
+                skillScores[skillName.replace(/&/g, 'and')];
+
             // If still not found, try finding any key that contains the main words
             if (!skillData) {
                 const mainWord = skillName.split(' ')[0].toLowerCase();
-                const matchingKey = Object.keys(skillScores).find(key => 
+                const matchingKey = Object.keys(skillScores).find(key =>
                     key.toLowerCase().includes(mainWord)
                 );
                 if (matchingKey) skillData = skillScores[matchingKey];
             }
-            
+
             if (skillData && skillData.total > 0) {
                 const accuracy = (skillData.correct / skillData.total) * 100;
                 const satScore = 200 + (accuracy / 100) * 600;
@@ -184,24 +184,59 @@ async function loadUserProgressFromFirestore(userId) {
             }
         });
 
-        // Calculate projected SAT scores based on overall performance
-        // SAT Math is out of 800, SAT R&W is out of 800 (total 1600)
-        const mathSkillsWithData = mathSkills.filter(s => skillScores[s.name]?.total > 0);
-        const readingSkillsWithData = readingSkills.filter(s => skillScores[s.name]?.total > 0);
+        // Calculate percentage of correct answers for overall scores
+        let mathTotalCorrect = 0;
+        let mathTotalQuestions = 0;
+        let readingTotalCorrect = 0;
+        let readingTotalQuestions = 0;
 
-        // If we have data, calculate weighted average based on question counts
-        if (mathSkillsWithData.length > 0) {
-            const mathAvg = mathSkillsWithData.reduce((sum, s) => sum + s.score, 0) / mathSkillsWithData.length;
-            userData.math.totalScore = Math.round(mathAvg);
+        // Sum up all math skill scores
+        mathSkills.forEach(skill => {
+            const skillName = skill.name;
+            let skillData = skillScores[skillName];
+            if (!skillData) {
+                const mainWord = skillName.split(' ')[0].toLowerCase();
+                const matchingKey = Object.keys(skillScores).find(key =>
+                    key.toLowerCase().includes(mainWord)
+                );
+                if (matchingKey) skillData = skillScores[matchingKey];
+            }
+            if (skillData && skillData.total > 0) {
+                mathTotalCorrect += skillData.correct;
+                mathTotalQuestions += skillData.total;
+            }
+        });
+
+        // Sum up all reading skill scores
+        readingSkills.forEach(skill => {
+            const skillName = skill.name;
+            let skillData = skillScores[skillName];
+            if (!skillData) {
+                const mainWord = skillName.split(' ')[0].toLowerCase();
+                const matchingKey = Object.keys(skillScores).find(key =>
+                    key.toLowerCase().includes(mainWord)
+                );
+                if (matchingKey) skillData = skillScores[matchingKey];
+            }
+            if (skillData && skillData.total > 0) {
+                readingTotalCorrect += skillData.correct;
+                readingTotalQuestions += skillData.total;
+            }
+        });
+
+        // Calculate percentages
+        if (mathTotalQuestions > 0) {
+            const mathPercent = Math.round((mathTotalCorrect / mathTotalQuestions) * 100);
+            userData.math.totalScore = `${mathPercent}%`;
         } else {
-            userData.math.totalScore = 0;
+            userData.math.totalScore = "-";
         }
 
-        if (readingSkillsWithData.length > 0) {
-            const readingAvg = readingSkillsWithData.reduce((sum, s) => sum + s.score, 0) / readingSkillsWithData.length;
-            userData.reading.totalScore = Math.round(readingAvg);
+        if (readingTotalQuestions > 0) {
+            const readingPercent = Math.round((readingTotalCorrect / readingTotalQuestions) * 100);
+            userData.reading.totalScore = `${readingPercent}%`;
         } else {
-            userData.reading.totalScore = 0;
+            userData.reading.totalScore = "-";
         }
 
         // Update the UI
@@ -314,10 +349,7 @@ function showMathContent() {
             </div>
         `;
 
-        // Animate score counting (only if not loading)
-        if (mathData.totalScore !== null) {
-            animateScore(document.getElementById("score-value-display"), mathData.totalScore, 1000);
-        }
+        // No animation needed for percentage/dash display
 
         const skillsHTML = mathData.skills.map((skill, index) => `
             <div class="skill-item" style="animation-delay: ${index * 0.1}s">
@@ -386,10 +418,7 @@ function showReadingContent() {
             </div>
         `;
 
-        // Animate score counting (only if not loading)
-        if (readingData.totalScore !== null) {
-            animateScore(document.getElementById("score-value-display"), readingData.totalScore, 1000);
-        }
+        // No animation needed for percentage/dash display
 
         const skillsHTML = readingData.skills.map((skill, index) => `
             <div class="skill-item" style="animation: fadeInUp 0.6s ease ${index * 0.1}s backwards">
