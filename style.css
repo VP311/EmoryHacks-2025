@@ -1763,17 +1763,20 @@ main {
 /* ================================ */
 
 .resource-list {
-  list-style: none; /* Removes the bullets */
+  list-style: none;
+  /* Removes the bullets */
   padding-left: 0;
   margin-top: 1rem;
 }
 
 .resource-list li {
-  margin-bottom: 0.85rem; /* Adds space between each link */
+  margin-bottom: 0.85rem;
+  /* Adds space between each link */
 }
 
 .resource-list a {
-  color: var(--accent-color, #60a5fa); /* Uses your site's accent color */
+  color: var(--accent-color, #60a5fa);
+  /* Uses your site's accent color */
   text-decoration: underline;
   font-size: 1rem;
   font-weight: 500;
@@ -1781,5 +1784,6 @@ main {
 }
 
 .resource-list a:hover {
-  color: var(--primary-color, #3b82f6); /* Uses your primary color on hover */
+  color: var(--primary-color, #3b82f6);
+  /* Uses your primary color on hover */
 }

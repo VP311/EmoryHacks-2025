@@ -606,24 +606,24 @@ export async function getWrongQuestionsByCategory(categoryName) {
 export async function loadWrongQuestionsForCategory(categoryName) {
     const normalizeAnswer = str => String(str).trim().toLowerCase();
     for (const questionId of questionIds.slice(0, 10)) {
-    const questionRef = doc(db, 'questions', questionId);
-    const questionSnap = await getDoc(questionRef);
+        const questionRef = doc(db, 'questions', questionId);
+        const questionSnap = await getDoc(questionRef);
 
-    if (questionSnap.exists()) {
-        const questionData = questionSnap.data();
+        if (questionSnap.exists()) {
+            const questionData = questionSnap.data();
 
-        const questionWithAnswer = {
-            id: questionId,
-            ...questionData,
-            userAnswer: answerMap[questionId]?.userAnswer || null,
-            normalizedUserAnswer: normalizeAnswer(answerMap[questionId]?.userAnswer || ''),
-            normalizedCorrectAnswer: normalizeAnswer(questionData.correctAnswer || ''),
-            rationale: answerMap[questionId]?.rationale || '',
-            timestamp: answerMap[questionId]?.timestamp || null
-        };
-        questions.push(questionWithAnswer);
+            const questionWithAnswer = {
+                id: questionId,
+                ...questionData,
+                userAnswer: answerMap[questionId]?.userAnswer || null,
+                normalizedUserAnswer: normalizeAnswer(answerMap[questionId]?.userAnswer || ''),
+                normalizedCorrectAnswer: normalizeAnswer(questionData.correctAnswer || ''),
+                rationale: answerMap[questionId]?.rationale || '',
+                timestamp: answerMap[questionId]?.timestamp || null
+            };
+            questions.push(questionWithAnswer);
+        }
     }
-}
 
     console.log('📚 loadWrongQuestionsForCategory called with:', categoryName);
 
@@ -759,7 +759,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const userDocSnap = await getDoc(userDocRef);
 
                 if (!userDocSnap.exists()) {
-                    loadJSON('./user.json', async function(data){
+                    loadJSON('./user.json', async function (data) {
                         await setDoc(userDocRef, data);
                         console.log("New user document created in Firestore");
                     });
@@ -835,11 +835,24 @@ document.addEventListener("DOMContentLoaded", () => {
         // Render options first to check what gets rendered
         renderOptions(q);
 
-        // Always hide text input for now - only use clickable options
-        // TODO: Show text input only for grid-in/free response questions
+        // Check if options were actually rendered (has .option-item elements)
+        const hasRenderedOptions = questionOptions && questionOptions.querySelector('.option-item');
         const answerInputSection = document.querySelector('.answer-input-section');
+
+        console.log('Question:', q.questionText?.substring(0, 50));
+        console.log('Has options array:', q.options?.length || 0);
+        console.log('Has rendered option items:', hasRenderedOptions ? 'yes' : 'no');
+
         if (answerInputSection) {
-            answerInputSection.style.display = 'none';
+            if (hasRenderedOptions) {
+                // Has clickable options - hide text input
+                answerInputSection.style.display = 'none';
+                console.log('Hiding text input, showing clickable options');
+            } else {
+                // No clickable options - show text input for user to type answer
+                answerInputSection.style.display = 'block';
+                console.log('Showing text input for free response');
+            }
         }
 
         // Reset state
@@ -871,8 +884,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderOptions(question) {
-        if (!question.options || question.options.length === 0) {
-            questionOptions.innerHTML = '<p>No options available for this question.</p>';
+        // If no options or only 1 option (placeholder), treat as free response
+        if (!question.options || question.options.length === 0 || question.options.length === 1) {
+            questionOptions.innerHTML = '';
             return;
         }
 
@@ -903,15 +917,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Handle text input for answers (for non-multiple choice questions)
     if (answerInput) {
         answerInput.addEventListener('input', (e) => {
-            const value = e.target.value.toUpperCase().trim();
-            
-            // Only allow A, B, C, D
-            if (value && !['A', 'B', 'C', 'D'].includes(value)) {
-                e.target.value = '';
-                return;
-            }
-            
-            e.target.value = value;
+            const value = e.target.value.trim();
             selectedAnswer = value || null;
         });
 
@@ -998,63 +1004,32 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-<<<<<<< Updated upstream
-    function normalize(str) {
-    return String(str || '').trim().toLowerCase();
-=======
+    function showAnswerFeedback(isCorrect, question) {
+        const normalize = str => String(str).trim().toLowerCase();
+
+        answerFeedback.classList.remove("hidden");
+        answerFeedback.className = `answer-feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+
         if (isCorrect) {
-            answerFeedback.innerHTML = `
-                <strong>✓ Correct!</strong> ${question.explanation || 'Great job!'}
-            `;
+            answerFeedback.innerHTML = `<strong>✓ Correct!</strong> ${question.explanation || 'Great job!'}`;
         } else {
             answerFeedback.innerHTML = `
-                <strong>✗ Incorrect.</strong> The correct answer is <strong>${question.correctAnswer}</strong>.
-            `;
-        }
-
-        // Style the text input
-        if (answerInput) {
-            answerInput.classList.add(isCorrect ? 'correct' : 'incorrect');
-            answerInput.disabled = true;
+            <strong>✗ Incorrect.</strong> The correct answer is <strong>${question.correctAnswer}</strong>.
+        `;
         }
 
         // Highlight correct/incorrect options
         document.querySelectorAll('.option-item').forEach(item => {
-            const optionLabel = item.dataset.option;
-            if (optionLabel === question.correctAnswer) {
+            const optionLabel = item.dataset.option; // "A", "B", ...
+            const optionText = item.querySelector('.option-text')?.textContent || "";
+
+            if (normalize(optionText) === normalize(question.correctAnswer)) {
                 item.classList.add('correct');
             } else if (optionLabel === selectedAnswer) {
                 item.classList.add('incorrect');
             }
         });
->>>>>>> Stashed changes
     }
-
-    function showAnswerFeedback(isCorrect, question) {
-    answerFeedback.classList.remove("hidden");
-    answerFeedback.className = `answer-feedback ${isCorrect ? 'correct' : 'incorrect'}`;
-
-    if (isCorrect) {
-        answerFeedback.innerHTML = `<strong>✓ Correct!</strong> ${question.explanation || 'Great job!'}`;
-    } else {
-        answerFeedback.innerHTML = `
-            <strong>✗ Incorrect.</strong> The correct answer is <strong>${question.correctAnswer}</strong>.
-        `;
-    }
-
-    // Highlight correct/incorrect options
-    document.querySelectorAll('.option-item').forEach(item => {
-    const optionLabel = item.dataset.option; // "A", "B", ...
-    const optionText = item.querySelector('.option-text')?.textContent || "";
-
-    if (normalize(optionText) === normalize(question.correctAnswer)) {
-        item.classList.add('correct');
-    } else if (optionLabel === selectedAnswer) {
-        item.classList.add('incorrect');
-    }
-});
-
-}
 
     async function showAIExplanation(question, userAnswer, rationale) {
         try {
