@@ -158,7 +158,7 @@ function parseSatPdfText(text) {
 // (This is the only function to replace in tests.js)
 
 async function extractPdfWithGemini(file) {
-    console.log("🤖 Starting PDF extraction process (NEW 2-page method)...");
+    console.log("🤖 Starting PDF extraction process...");
 
     if (!OPENROUTER_API_KEY) {
         throw new Error("API key not found. Please check config.js");
@@ -171,34 +171,100 @@ async function extractPdfWithGemini(file) {
     const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     console.log(`📄 PDF loaded: ${pdf.numPages} pages`);
 
-    // --- NEW: Render Page 2 ---
-    const page2 = await pdf.getPage(2);
-    const scale2 = 2.0;
-    const viewport2 = page2.getViewport({ scale: scale2 });
-    const canvas2 = document.createElement('canvas');
-    const context2 = canvas2.getContext('2d');
-    canvas2.height = viewport2.height;
-    canvas2.width = viewport2.width;
-    await page2.render({ canvasContext: context2, viewport: viewport2 }).promise;
-    const page2Image = canvas2.toDataURL('image/png').split(',')[1];
-    console.log(`🖼️ Page 2 rendered (${canvas2.width}x${canvas2.height})`);
+    // Check if PDF has at least 1 page
+    if (pdf.numPages < 1) {
+        throw new Error(`PDF is empty or invalid.`);
+    }
 
-    // --- NEW: Render Page 4 ---
-    const page4 = await pdf.getPage(4);
-    const scale4 = 2.0;
-    const viewport4 = page4.getViewport({ scale: scale4 });
-    const canvas4 = document.createElement('canvas');
-    const context4 = canvas4.getContext('2d');
-    canvas4.height = viewport4.height;
-    canvas4.width = viewport4.width;
-    await page4.render({ canvasContext: context4, viewport: viewport4 }).promise;
-    const page4Image = canvas4.toDataURL('image/png').split(',')[1];
-    console.log(`🖼️ Page 4 rendered (${canvas4.width}x${canvas4.height})`);
+    let promptText, requestBody;
 
-    console.log(`🤖 Sending 2 images to AI in one call...`);
+    // Try SAT format first (page 1 only)
+    try {
+        console.log("📋 Trying SAT format (page 1)...");
+        
+        const page1 = await pdf.getPage(1);
+        const scale1 = 2.0;
+        const viewport1 = page1.getViewport({ scale: scale1 });
+        const canvas1 = document.createElement('canvas');
+        const context1 = canvas1.getContext('2d');
+        canvas1.height = viewport1.height;
+        canvas1.width = viewport1.width;
+        await page1.render({ canvasContext: context1, viewport: viewport1 }).promise;
+        const page1Image = canvas1.toDataURL('image/png').split(',')[1];
+        console.log(`🖼️ Page 1 rendered (${canvas1.width}x${canvas1.height})`);
 
-    // --- NEW: Single, Comprehensive Prompt ---
-    const promptText = `You are an AI assistant reading a 2-page score report.
+        promptText = `You are an AI assistant reading a score report. Determine if this is an SAT or PSAT report.
+
+Please extract ALL score data from this page into a JSON object.
+
+CRITICAL: Return ONLY a single JSON object. Use null if a value is not found.
+Required JSON format:
+{
+  "testType": "SAT" or "PSAT",
+  "testDate": "YYYY-MM-DD",
+  "compositeScore": 1200,
+  "sections": {
+    "readingWriting": 600,
+    "math": 600
+  },
+  "subscores": {
+    "Command of Evidence": 8,
+    "Words in Context": 8,
+    "Expression of Ideas": 8,
+    "Standard English Conventions": 8,
+    "Heart of Algebra": 8,
+    "Problem Solving and Data Analysis": 8,
+    "Passport to Advanced Math": 8
+  }
+}
+
+Extract the total score, section scores (Reading and Writing, Math), and all available subscores or skill-level scores.
+`;
+
+        requestBody = {
+            model: "anthropic/claude-3-haiku",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: "Here is the score report page:" },
+                        { type: "image_url", image_url: { url: `data:image/png;base64,${page1Image}` } },
+                        { type: "text", text: promptText }
+                    ]
+                }
+            ]
+        };
+    } catch (page1Error) {
+        console.log("⚠️ Page 1 extraction failed, trying PSAT format (pages 2 and 4)...");
+        
+        // Fall back to PSAT format (pages 2 and 4)
+        if (pdf.numPages < 4) {
+            throw new Error(`PDF appears to be PSAT format but only has ${pdf.numPages} pages. Need at least 4 pages.`);
+        }
+
+        const page2 = await pdf.getPage(2);
+        const scale2 = 2.0;
+        const viewport2 = page2.getViewport({ scale: scale2 });
+        const canvas2 = document.createElement('canvas');
+        const context2 = canvas2.getContext('2d');
+        canvas2.height = viewport2.height;
+        canvas2.width = viewport2.width;
+        await page2.render({ canvasContext: context2, viewport: viewport2 }).promise;
+        const page2Image = canvas2.toDataURL('image/png').split(',')[1];
+        console.log(`🖼️ Page 2 rendered (${canvas2.width}x${canvas2.height})`);
+
+        const page4 = await pdf.getPage(4);
+        const scale4 = 2.0;
+        const viewport4 = page4.getViewport({ scale: scale4 });
+        const canvas4 = document.createElement('canvas');
+        const context4 = canvas4.getContext('2d');
+        canvas4.height = viewport4.height;
+        canvas4.width = viewport4.width;
+        await page4.render({ canvasContext: context4, viewport: viewport4 }).promise;
+        const page4Image = canvas4.toDataURL('image/png').split(',')[1];
+        console.log(`🖼️ Page 4 rendered (${canvas4.width}x${canvas4.height})`);
+
+        promptText = `You are an AI assistant reading a PSAT score report.
 - The first image is Page 2, with the main scores.
 - The second image is Page 4, with the question breakdown.
 
@@ -228,22 +294,22 @@ Required JSON format:
 }
 `;
 
-    const requestBody = {
-        model: "anthropic/claude-3-haiku",
-        messages: [
-            {
-                role: "user",
-                content: [
-                    { type: "text", text: "Here is Page 2 of the score report:" },
-                    { type: "image_url", image_url: { url: `data:image/png;base64,${page2Image}` } },
-                    { type: "text", text: "Here is Page 4 of the score report (the breakdown):" },
-                    { type: "image_url", image_url: { url: `data:image/png;base64,${page4Image}` } },
-                    { type: "text", text: promptText }
-                ]
-            }
-        ]
-    };
-    // --- END: Single, Comprehensive Prompt ---
+        requestBody = {
+            model: "anthropic/claude-3-haiku",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: "Here is Page 2 of the score report:" },
+                        { type: "image_url", image_url: { url: `data:image/png;base64,${page2Image}` } },
+                        { type: "text", text: "Here is Page 4 of the score report (the breakdown):" },
+                        { type: "image_url", image_url: { url: `data:image/png;base64,${page4Image}` } },
+                        { type: "text", text: promptText }
+                    ]
+                }
+            ]
+        };
+    }
 
     const response = await fetch(
         'https://openrouter.ai/api/v1/chat/completions',

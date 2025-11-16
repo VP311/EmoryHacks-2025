@@ -130,40 +130,40 @@ const skillData = {
 document.addEventListener("DOMContentLoaded", () => {
     // Get the selected skill from localStorage
     const selectedSkill = localStorage.getItem('selectedSkill');
-    
+
     if (!selectedSkill) {
         window.location.href = 'breakdown.html';
         return;
     }
-    
+
     // Update the header with skill info
     document.getElementById('skill-title').textContent = selectedSkill;
-    
+
     // Clear score info until we load it
     document.getElementById('skill-score').textContent = 'Loading...';
     document.getElementById('skill-progress-bar').style.width = '0%';
-    
+
     // Show initial loading state
     const container = document.getElementById('questions-container');
     container.innerHTML = '<div class="loading">Checking authentication...</div>';
-    
+
     // Wait for auth state to be ready before loading questions and skill data
     // We need to wait a bit for auth to restore from localStorage/cookies
     let authCheckCount = 0;
     onAuthStateChanged(auth, async (user) => {
         authCheckCount++;
         console.log(`🔐 Auth state changed (${authCheckCount}), user:`, user ? user.uid : 'Not logged in');
-        
+
         // If this is the first call and user is null, wait for potential second call
         if (authCheckCount === 1 && !user) {
             console.log('⏳ Waiting for auth to potentially restore session...');
             // Give Firebase 500ms to restore the session
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             // Check again
             const currentUser = auth.currentUser;
             console.log('� Re-checked auth.currentUser:', currentUser ? currentUser.uid : 'Still not logged in');
-            
+
             if (currentUser) {
                 // User was restored, use that
                 await loadSkillDataFromFirebase(currentUser, selectedSkill);
@@ -171,12 +171,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
         }
-        
+
         // Load actual skill data from Firebase if user is logged in
         if (user) {
             await loadSkillDataFromFirebase(user, selectedSkill);
         }
-        
+
         await loadAndRenderWrongQuestions(selectedSkill, user);
     });
 });
@@ -186,17 +186,17 @@ async function loadSkillDataFromFirebase(user, skillName) {
     try {
         const userRef = doc(db, 'Users', user.uid);
         const userSnap = await getDoc(userRef);
-        
+
         if (userSnap.exists()) {
             const userData = userSnap.data();
             const skillScores = userData.skillScores || {};
             const skillData = skillScores[skillName];
-            
+
             if (skillData && skillData.total > 0) {
                 const accuracy = (skillData.correct / skillData.total) * 100;
                 const performanceText = `${Math.round(accuracy)}% (${skillData.correct}/${skillData.total})`;
                 const progressWidth = accuracy;
-                
+
                 document.getElementById('skill-score').textContent = performanceText;
                 document.getElementById('skill-progress-bar').style.width = progressWidth + '%';
             } else {
@@ -213,17 +213,17 @@ async function loadSkillDataFromFirebase(user, skillName) {
 // Load and render wrong questions from Firebase
 async function loadAndRenderWrongQuestions(selectedSkill, user) {
     const container = document.getElementById('questions-container');
-    
+
     console.log('=== LOADING WRONG QUESTIONS ===');
     console.log('Selected skill:', selectedSkill);
     console.log('User passed to function:', user ? user.uid : 'Not logged in');
-    
+
     // Show loading state
     container.innerHTML = '<div class="loading">Loading questions...</div>';
-    
+
     try {
         let questions = [];
-        
+
         if (user) {
             // Load from Firebase
             console.log(`📥 Loading wrong questions for category: ${selectedSkill}`);
@@ -237,15 +237,15 @@ async function loadAndRenderWrongQuestions(selectedSkill, user) {
             questions = mockWrongQuestions[selectedSkill] || [];
             console.log(`📦 Mock data questions:`, questions.length);
         }
-        
+
         // Update header with question count
         const headerEl = document.getElementById('questions-header');
         if (headerEl) {
-            headerEl.textContent = questions.length > 0 
-                ? `Questions You Got Wrong (${questions.length})` 
+            headerEl.textContent = questions.length > 0
+                ? `Questions You Got Wrong (${questions.length})`
                 : 'Questions You Got Wrong';
         }
-        
+
         if (questions.length === 0) {
             container.innerHTML = `
                 <div class="no-questions-review">
@@ -255,7 +255,7 @@ async function loadAndRenderWrongQuestions(selectedSkill, user) {
             `;
             return;
         }
-        
+
         // Render the questions
         renderReviewQuestions(questions);
     } catch (error) {
@@ -271,7 +271,7 @@ async function loadAndRenderWrongQuestions(selectedSkill, user) {
 
 function renderReviewQuestions(questions) {
     const container = document.getElementById('questions-container');
-    
+
     const questionsHTML = questions.map((question, index) => `
         <div class="review-question-card">
             <div class="review-question-number">Question ${index + 1}</div>
@@ -294,13 +294,13 @@ function renderReviewQuestions(questions) {
             </div>
         </div>
     `).join('');
-    
+
     container.innerHTML = questionsHTML;
 }
 
 function getDisplayAnswer(question) {
     // If userAnswer is a single letter (A, B, C, D) and we have options, convert to option text
-    if (question.userAnswer && question.userAnswer.length === 1 && 
+    if (question.userAnswer && question.userAnswer.length === 1 &&
         question.options && question.options.length > 0) {
         const letterCode = question.userAnswer.toUpperCase().charCodeAt(0);
         if (letterCode >= 65 && letterCode <= 90) { // A-Z
@@ -318,32 +318,32 @@ function renderReviewOptions(question) {
     if (!question.isMultipleChoice) {
         return '';
     }
-    
-    function normalizeAnswer(ans){
+
+    function normalizeAnswer(ans) {
         return String(ans).trim().toLowerCase();
     }
 
     return `
         <div class="review-options">
             ${question.options.map(option => {
-                const isUserAnswer = normalizeAnswer(option) === normalizeAnswer(question.userAnswer);
-                const isCorrectAnswer = normalizeAnswer(option) === normalizeAnswer(question.correctAnswer);
-                
-                let className = 'review-option';
-                if (isCorrectAnswer) {
-                    className += ' option-correct';
-                } else if (isUserAnswer) {
-                    className += ' option-wrong';
-                }
-                
-                return `
+        const isUserAnswer = normalizeAnswer(option) === normalizeAnswer(question.userAnswer);
+        const isCorrectAnswer = normalizeAnswer(option) === normalizeAnswer(question.correctAnswer);
+
+        let className = 'review-option';
+        if (isCorrectAnswer) {
+            className += ' option-correct';
+        } else if (isUserAnswer) {
+            className += ' option-wrong';
+        }
+
+        return `
                     <div class="${className}">
                         <span class="option-text">${option}</span>
                         ${isCorrectAnswer ? '<span class="option-indicator">✓ Correct</span>' : ''}
                         ${isUserAnswer && !isCorrectAnswer ? '<span class="option-indicator">✗ Your choice</span>' : ''}
                     </div>
                 `;
-            }).join('')}
+    }).join('')}
         </div>
     `;
 }
