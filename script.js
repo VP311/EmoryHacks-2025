@@ -1033,6 +1033,16 @@ if (submitBtn) {
 
             submitBtn.classList.add("disabled"); // Prevent double-clicking rationale
             submitBtn.textContent = "Processing...";
+            try {
+            const explanationHTML = await Promise.race([
+                getAIExplanation(currentQuestion, selectedOptionText, rationale),
+                new Promise((_, reject) => setTimeout(() => reject('AI timed out'), 10000))
+            ]);
+            aiExplanationPanel.innerHTML = explanationHTML;
+        } catch (err) {
+            console.error("AI explanation error:", err);
+            aiExplanationPanel.innerHTML = `<p>AI explanation not available.</p>`;
+        }
 
             // Generate AI explanation
             const explanationHTML = await getAIExplanation(currentQuestion, selectedOptionText, rationale);
@@ -1040,6 +1050,14 @@ if (submitBtn) {
             aiExplanationPanel.classList.remove("hidden");
 
             applyInteractiveHighlights(aiExplanationPanel, questionText, questionOptions);
+
+            await import('./ai-explanation.js').then(module => {
+            getAIExplanation = module.getAIExplanation;
+            applyInteractiveHighlights = module.applyInteractiveHighlights;
+            });
+
+// Only now enable start button or login
+
 
             // Save answer with rationale
             await saveAnswerToSession(currentQuestion.id, selectedOptionText, isCorrect, rationale);
@@ -1271,5 +1289,5 @@ rationaleInput.addEventListener("keydown", async (e) => {
             landingSection.classList.remove("hidden");
         });
     }
-    // --- END CHART.JS IMPLEMENTATION ---
+    // --- END CHART.JS IMPLEMENTATFION ---
 });
