@@ -1713,3 +1713,29 @@ main {
   border-color: rgba(239, 68, 68, 0.7);
   color: #ef4444;
 }
+
+/* ================================ */
+/* RESOURCE LIST STYLES */
+/* ================================ */
+
+.resource-list {
+  list-style: none; /* Removes the bullets */
+  padding-left: 0;
+  margin-top: 1rem;
+}
+
+.resource-list li {
+  margin-bottom: 0.85rem; /* Adds space between each link */
+}
+
+.resource-list a {
+  color: var(--accent-color, #60a5fa); /* Uses your site's accent color */
+  text-decoration: underline;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.resource-list a:hover {
+  color: var(--primary-color, #3b82f6); /* Uses your primary color on hover */
+}
