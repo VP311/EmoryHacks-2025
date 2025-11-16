@@ -398,7 +398,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
             alert("Duplicate item rolled - Refunding points!");
 
-            tickets++;
+            tickets+=5;
             updateTickets();
             if (currentUserId) {
                 const userRef = doc(db, "Users", currentUserId);
