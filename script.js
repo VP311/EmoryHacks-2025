@@ -1330,23 +1330,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function endSession() {
-        await completeSession();
-        questionText.textContent = "Great work! We'll generate an adaptive follow-up based on your responses.";
-        topicChip.textContent = "Session complete";
-        questionCounter.textContent = "";
-        questionOptions.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem;">
-                <button class="primary-btn" onclick="location.href='breakdown.html'">View Progress</button>
-                <button class="primary-btn" onclick="location.reload()">Start New Session</button>
-            </div>
-        `;
-        answerFeedback.classList.add("hidden");
-        aiExplanationPanel.classList.add("hidden");
-        submitBtn.classList.add("hidden");
-        nextBtn.classList.add("hidden");
-        if (unsureBtn) unsureBtn.style.display = 'none';
-        rationaleSection.classList.add("hidden");
-    }
+    await completeSession();
+    
+    // 1. Hide the original action buttons
+    submitBtn.classList.add("hidden");
+    nextBtn.classList.add("hidden");
+    if (unsureBtn) unsureBtn.style.display = 'none';
+    rationaleSection.classList.add("hidden");
+    
+    // 🎯 THE FIX: Hide the button that was just clicked!
+    // The End Session button should disappear once the session ends.
+    endSessionBtn.classList.add("hidden"); 
+
+    // 2. Clear out other feedback areas
+    answerInput.classList.add("hidden"); // Ensure text input is hidden too
+    answerFeedback.classList.add("hidden");
+    aiExplanationPanel.classList.add("hidden");
+
+    // 3. Transform the Card into a Summary
+    questionText.textContent = "Great work! We'll generate an adaptive follow-up based on your responses.";
+    topicChip.textContent = "Session complete";
+    questionCounter.textContent = "";
+    
+    // Replace question options with new action buttons
+    questionOptions.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem;">
+            <button class="primary-btn" onclick="location.href='breakdown.html'">View Progress</button>
+            <button class="primary-btn" onclick="location.reload()">Start New Session</button>
+        </div>
+    `;
+    questionOptions.classList.remove('hidden'); // Ensure options area is visible
+
+    document.getElementById("session-progress").classList.add("hidden"); // Hide the session progress sidebar
+}
 
 
     // -- WORK IN PROGRESS - DANIEL ---
