@@ -1,9 +1,9 @@
 
 How to Make Ai token work for test.html +
 
-In the project folder, create their own new file named config.js
+In project main, create a new file named config.js
 
-Inside that config.js file, paste this code (with API key):
+Inside that config.js file, paste this code (edit the API key):
 
 
 
