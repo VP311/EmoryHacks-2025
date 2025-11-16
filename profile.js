@@ -155,7 +155,7 @@ export function loadProfilePage() {
             document.querySelectorAll(".profile-option").forEach(img => {
                 img.addEventListener("click", function(e) {
                     e.stopPropagation();
-                    const iconId = this.getAttribute("data-icon-id");
+                    const iconId = this.getAttribute("data-icon-id").replace("icon-","").replace("%20"," ");
                     console.log("Selected avatar:", iconId);
                     userInfo.rewards.equippedIcon = iconId;
                     setDoc(doc(db, "Users", user.uid), userInfo).then(function () {
@@ -207,4 +207,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
     applyTheme();
 })
-
