@@ -587,6 +587,7 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
 
         // Update skill scores in the user document
         const userSnap = await getDoc(userRef);
+        const userData = userSnap.data();
         const currentProgress = userSnap.exists() ? userSnap.data() : {};
         const skillScores = currentProgress.skillScores || {};
 
@@ -632,12 +633,13 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
         const newPoints = currentPoints + pointsToAward;
 
         // Update the user document
-        await setDoc(userRef, {
-            skillScores: skillScores,
-            attemptedQuestions: attemptedQuestions,
-            answers: arrayUnion(answerData),
-            points: newPoints
-        }, { merge: true });
+
+        userData.skillScores = skillScores;
+        userData.attemptedQuestions = attemptedQuestions;
+        userData.answers = arrayUnion(answerData);
+        userData.points = newPoints;
+
+        await setDoc(userRef, userData);
 
         console.log(`Updated progress for ${categoryKey}: ${isCorrect ? 'correct' : 'incorrect'}`);
         if (pointsToAward > 0) {
