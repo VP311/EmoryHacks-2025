@@ -510,6 +510,41 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
             }
         }
 
+        // If categoryKey is still the topic and not one of our standard categories, try to infer
+        const standardCategories = [
+            'Algebra', 'Advanced Math', 'Geometry and Trigonometry', 
+            'Problem-Solving and Data Analysis', 'Craft & Structure', 
+            'Information and Ideas', 'Conventions of Standard English', 
+            'Expression of Ideas'
+        ];
+        
+        if (!standardCategories.includes(categoryKey)) {
+            // Try to infer from the topic string
+            const topicLower = categoryKey.toLowerCase();
+            if (topicLower.includes('algebra') || topicLower.includes('linear') || topicLower.includes('quadratic')) {
+                categoryKey = 'Algebra';
+            } else if (topicLower.includes('function') || topicLower.includes('polynomial') || topicLower.includes('exponential')) {
+                categoryKey = 'Advanced Math';
+            } else if (topicLower.includes('geometry') || topicLower.includes('trigonometry') || topicLower.includes('triangle') || topicLower.includes('circle')) {
+                categoryKey = 'Geometry and Trigonometry';
+            } else if (topicLower.includes('data') || topicLower.includes('statistic') || topicLower.includes('probability') || topicLower.includes('ratio') || topicLower.includes('percent')) {
+                categoryKey = 'Problem-Solving and Data Analysis';
+            } else if (topicLower.includes('craft') || topicLower.includes('structure') || topicLower.includes('purpose')) {
+                categoryKey = 'Craft & Structure';
+            } else if (topicLower.includes('information') || topicLower.includes('ideas') || topicLower.includes('central')) {
+                categoryKey = 'Information and Ideas';
+            } else if (topicLower.includes('grammar') || topicLower.includes('punctuation') || topicLower.includes('convention')) {
+                categoryKey = 'Conventions of Standard English';
+            } else if (topicLower.includes('expression') || topicLower.includes('rhetoric') || topicLower.includes('transition')) {
+                categoryKey = 'Expression of Ideas';
+            } else {
+                // Default to Other for non-SAT questions
+                categoryKey = 'Other';
+            }
+        }
+
+        console.log(`📝 Question ${questionId}: topic="${questionTopic}", tags=[${tags?.join(', ')}], final category="${categoryKey}"`);
+
         // Get reference to user document
         const userRef = doc(db, 'users', currentUserId);
 
@@ -518,7 +553,7 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
         const currentProgress = userSnap.exists() ? userSnap.data() : {};
         const skillScores = currentProgress.skillScores || {};
 
-        // Update the specific skill category
+        // Update the specific skill category (categoryKey already calculated above)
         if (!skillScores[categoryKey]) {
             skillScores[categoryKey] = { correct: 0, total: 0, incorrectQID: [] };
         }
@@ -580,7 +615,7 @@ export async function getWrongQuestionsByCategory(categoryName) {
 
     try {
         // Access the user document where skillScores is a map field
-        const userRef = doc(db, 'users', currentUserId);
+        const userRef = doc(db, 'Users', currentUserId);
         console.log('📄 Fetching user doc from:', `users/${currentUserId}`);
 
         const userSnap = await getDoc(userRef);
@@ -693,6 +728,12 @@ export async function completeSession() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    let getAIExplanation, applyInteractiveHighlights;
+    (async () => {
+        const aiModule = await import('./ai-explanation.js');
+        getAIExplanation = aiModule.getAIExplanation;
+        applyInteractiveHighlights = aiModule.applyInteractiveHighlights;
+    })();
     // Grab the important sections
     const landingSection = document.getElementById("landing");
     const trainerSection = document.getElementById("trainer");
@@ -750,6 +791,18 @@ document.addEventListener("DOMContentLoaded", () => {
             // }
         });
     }
+
+
+if (rationaleInput) {
+    rationaleInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submitRationale(); // or your function name
+        }
+    });
+}
+
+
 
     // Switch from landing → trainer
     if (startBtn) {
@@ -821,6 +874,30 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.classList.remove("hidden");
         nextBtn.classList.add("hidden");
 
+        // Clear text input
+        if (answerInput) {
+            answerInput.value = '';
+            answerInput.classList.remove('correct', 'incorrect');
+            answerInput.disabled = false;
+            // Auto-focus the input for non-multiple choice questions
+            // Re-check after rendering
+            const hasOptions = questionOptions && questionOptions.querySelector('.option-item');
+            if (!hasOptions) {
+                setTimeout(() => answerInput.focus(), 100);
+            }
+        }
+
+        if(submitBtn){
+            submitBtn.textContent = "Submit Answer";
+            submitBtn.classList.remove("disabled");
+        }
+
+    // Clear previous option selections
+    document.querySelectorAll('.option-item').forEach(item => {
+        item.classList.remove('selected', 'correct', 'incorrect');
+    });
+}
+
         // Clear option selections
         document.querySelectorAll('.option-item').forEach(item => {
             item.classList.remove('selected', 'correct', 'incorrect');
@@ -882,16 +959,60 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Submit answer
-    if (submitBtn) {
-        submitBtn.addEventListener("click", async () => {
-            if (!selectedAnswer) {
-                alert("Please select an answer first.");
-                return;
-            }
-            if (submitBtn.classList.contains("disabled")) {
-                return;
-            }
+    // Submit answer button event listener
+// Submit answer button event listener
+if (submitBtn) {
+    submitBtn.addEventListener("click", async () => {
+        // --- Rationale Submission Logic ---
+        if (submitBtn.textContent === "Submit Rationale") {
+            // This is the second click, for the RATIONALE
+            const rationale = rationaleInput.value.trim();
+            const currentQuestion = questions[currentIndex];
+            const selectedOptionText = currentQuestion.options?.[selectedAnswer.charCodeAt(0) - 65] || answerInput.value;
+            const isCorrect = false; // We only enter this state if the answer was incorrect
 
+            submitBtn.classList.add("disabled"); // Prevent double-clicking rationale
+            submitBtn.textContent = "Processing...";
+
+            // Generate AI explanation
+            const explanationHTML = await getAIExplanation(currentQuestion, selectedOptionText, rationale);
+            aiExplanationPanel.innerHTML = explanationHTML;
+            aiExplanationPanel.classList.remove("hidden");
+
+            applyInteractiveHighlights(aiExplanationPanel, questionText, questionOptions);
+
+            // Save answer with rationale
+            await saveAnswerToSession(currentQuestion.id, selectedOptionText, isCorrect, rationale);
+            await updateUserProgress(currentQuestion.id, isCorrect, currentQuestion.skillCategory, currentQuestion.tags || [], currentQuestion, selectedOptionText, rationale);
+
+            // Transition to Next button
+            submitBtn.classList.add("hidden");
+            nextBtn.classList.remove("hidden");
+            submitBtn.classList.remove("disabled"); // Reset disabled state
+
+            return; // Exit the function after handling rationale
+        }
+
+        // --- Initial Answer Submission Logic ---
+        if (!selectedAnswer) {
+            alert("Please select an answer first.");
+            return;
+        }
+        if (submitBtn.classList.contains("disabled")) return;
+        
+        // Disable button during processing
+        submitBtn.classList.add("disabled");
+        submitBtn.textContent = "Checking...";
+
+        const currentQuestion = questions[currentIndex];
+        const normalize = str => String(str).trim().toLowerCase();
+        const selectedOptionText = currentQuestion.options?.[selectedAnswer.charCodeAt(0) - 65] || answerInput.value;
+
+        // Assuming currentQuestion.correctAnswer is the text of the correct answer
+        const isCorrect = normalize(selectedOptionText) === normalize(currentQuestion.correctAnswer);
+
+        // Show feedback immediately
+        showAnswerFeedback(isCorrect, currentQuestion);
             const currentQuestion = questions[currentIndex];
             const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
             const rationale = isUnsure ? rationaleInput.value : '';
@@ -899,36 +1020,74 @@ document.addEventListener("DOMContentLoaded", () => {
             // Show feedback
             showAnswerFeedback(isCorrect, currentQuestion);
 
-            // Save to Firestore
-            await saveAnswerToSession(
-                currentQuestion.id,
-                selectedAnswer,
-                isCorrect,
-                rationale
-            );
+        if (!isCorrect) {
+            // INCORRECT ANSWER PATH
+            submitBtn.textContent = "Submit Rationale"; // Change button text for the next action
+            submitBtn.classList.remove("disabled"); // Re-enable for rationale submission
+            
+            rationaleSection.classList.remove("hidden");
+            rationaleInput.focus();
+            
+            // NOTE: The rationale submission is now handled by the logic at the top of this function.
 
-            await updateUserProgress(
-                currentQuestion.id,
-                isCorrect,
-                currentQuestion.skillCategory,
-                currentQuestion.tags || [],
-                currentQuestion,
-                selectedAnswer,
-                rationale
-            );
+        } else {
+            // CORRECT ANSWER PATH
+            // Save immediately and show Next
+            await saveAnswerToSession(currentQuestion.id, selectedOptionText, isCorrect, '');
+            await updateUserProgress(currentQuestion.id, isCorrect, currentQuestion.skillCategory, currentQuestion.tags || [], currentQuestion, selectedOptionText, '');
 
-            submitBtn.classList.add("disabled");
+            // Hide rationale/explanation elements
+            rationaleSection.classList.add("hidden");
+            aiExplanationPanel.classList.add("hidden");
 
-            // If wrong and has rationale, get AI explanation
-            if (!isCorrect && rationale) {
-                await showAIExplanation(currentQuestion, selectedAnswer, rationale);
-            }
-
+            // Transition to Next button
             submitBtn.classList.add("hidden");
-            submitBtn.classList.remove("disabled");
             nextBtn.classList.remove("hidden");
-        });
+            submitBtn.classList.remove("disabled"); // Reset disabled state
+            submitBtn.textContent = "Submit"; // Reset text for the next question
+        }
+    });
+}
+
+
+// Handle Enter key in rationale input
+rationaleInput.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+
+        const currentQuestion = questions[currentIndex];
+        const selectedOptionText = currentQuestion.options?.[selectedAnswer.charCodeAt(0) - 65] || answerInput.value;
+        const isCorrect = false; // Only for wrong answers
+
+        const rationale = rationaleInput.value.trim();
+
+        // Generate AI explanation
+        const explanationHTML = await getAIExplanation(currentQuestion, selectedOptionText, rationale);
+        aiExplanationPanel.innerHTML = explanationHTML;
+        aiExplanationPanel.classList.remove("hidden");
+
+        applyInteractiveHighlights(aiExplanationPanel, questionText, questionOptions);
+
+        // Save answer with rationale
+        await saveAnswerToSession(currentQuestion.id, selectedOptionText, isCorrect, rationale);
+        await updateUserProgress(
+            currentQuestion.id,
+            isCorrect,
+            currentQuestion.skillCategory,
+            currentQuestion.tags || [],
+            currentQuestion,
+            selectedOptionText,
+            rationale
+        );
+
+        // Hide submit button, show next
+        submitBtn.classList.add("hidden");
+        nextBtn.classList.remove("hidden");
     }
+});
+
+
+
     function showAnswerFeedback(isCorrect, question) {
         answerFeedback.classList.remove("hidden");
         answerFeedback.className = `answer-feedback ${isCorrect ? 'correct' : 'incorrect'}`;
@@ -988,6 +1147,21 @@ document.addEventListener("DOMContentLoaded", () => {
         nextBtn.addEventListener("click", async () => {
             currentIndex++;
             await loadQuestion();
+            if (submitBtn) {
+            submitBtn.textContent = "Submit"; // Reset text
+            submitBtn.classList.remove("disabled"); // Re-enable if it was disabled
+            submitBtn.classList.remove("hidden"); // Ensure submit is shown
+            nextBtn.classList.add("hidden"); // Ensure next is hidden
+        }
+        
+        // 4. Reset input states (since they were disabled/locked after submission)
+        if (answerInput) {
+            answerInput.disabled = false;
+        }
+        // Re-enable click handlers for options (if they were disabled by showAnswerFeedback)
+        document.querySelectorAll('.option-item').forEach(item => {
+            item.style.pointerEvents = 'auto';
+        });
         });
     }
     function resetQuestionState() {

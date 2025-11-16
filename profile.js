@@ -46,7 +46,7 @@ export async function loadIndexPage() {
                 try {
                     const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js");
                     const { db } = await import('./script.js');
-                    const prefsRef = doc(db, 'users', user.uid, 'preferences', 'settings');
+                    const prefsRef = doc(db, 'Users', user.uid, 'preferences', 'settings');
                     const prefsSnap = await getDoc(prefsRef);
 
                     if (prefsSnap.exists() && prefsSnap.data().equippedIcon) {
@@ -89,7 +89,7 @@ export function loadProfilePage() {
 
         // Load equipped icon from Firestore
         try {
-            const userInfo = (await getDoc(doc(db,'Users',user.uid))).data();
+            const userInfo = (await getDoc(doc(db, 'Users', user.uid))).data();
 
             const rewards = userInfo.rewards;
             const equippedIcon = rewards.equippedIcon;
@@ -105,22 +105,22 @@ export function loadProfilePage() {
                     profilePictureEl.innerHTML = `<img src="/img/profile-btn.png" style="height: 100%; width: 100%; border-radius:50%; opacity: 1"/>`
                 }
             }
-            
+
             const pictureSelection = document.getElementById("profile-picture-selection")
             const editBtn = document.getElementById("edit-profile");
 
             const items = rewards.items;
             const icons = [];
 
-            for (var i of items){
-                if (i.includes("icon-")){
+            for (var i of items) {
+                if (i.includes("icon-")) {
                     icons.push(i);
                 }
             }
 
-            for (var i of icons){
-                const reformattedIconName = i.replace("icon-","").replace(" ","%20");
-                pictureSelection.insertAdjacentHTML("beforeend",`<img src="./rewards/icons/${reformattedIconName}.png" class="profile-option" id=${reformattedIconName} style="width:60px; height:60px; border-radius:50%; cursor:pointer"></img>`);
+            for (var i of icons) {
+                const reformattedIconName = i.replace("icon-", "").replace(" ", "%20");
+                pictureSelection.insertAdjacentHTML("beforeend", `<img src="./rewards/icons/${reformattedIconName}.png" class="profile-option" id=${reformattedIconName} style="width:60px; height:60px; border-radius:50%; cursor:pointer"></img>`);
             }
 
             editBtn.addEventListener("click", async () => {
@@ -135,10 +135,10 @@ export function loadProfilePage() {
                 img.addEventListener("click", () => {
                     const iconId = img.id;
                     userInfo.rewards.equippedIcon = iconId;
-                    setDoc(doc(db,"Users",user.uid),userInfo).then(function(){
+                    setDoc(doc(db, "Users", user.uid), userInfo).then(function () {
                         window.location.replace("./profile.html");
                     });
-                    
+
                     console.log(iconId);
                 });
             });

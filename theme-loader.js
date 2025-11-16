@@ -73,7 +73,7 @@ export function removeTheme() {
 // Load and apply user's equipped theme
 export async function loadUserTheme(userId) {
     try {
-        const prefsRef = doc(db, 'users', userId, 'preferences', 'settings');
+        const prefsRef = doc(db, 'Users', userId, 'preferences', 'settings');
         const prefsSnap = await getDoc(prefsRef);
         
         if (prefsSnap.exists() && prefsSnap.data().equippedTheme) {
@@ -88,7 +88,7 @@ export async function loadUserTheme(userId) {
 // Load and apply user's equipped icon to navigation
 export async function loadUserIcon(userId) {
     try {
-        const prefsRef = doc(db, 'users', userId, 'preferences', 'settings');
+        const prefsRef = doc(db, 'Users', userId, 'preferences', 'settings');
         const prefsSnap = await getDoc(prefsRef);
         
         if (prefsSnap.exists() && prefsSnap.data().equippedIcon) {
