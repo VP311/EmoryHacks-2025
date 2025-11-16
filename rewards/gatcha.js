@@ -88,18 +88,18 @@ const themePool = [
     }
 ];
 
-function getThemeByName(name){
-    for (var i of themePool){
-        if (i.name == name){
+function getThemeByName(name) {
+    for (var i of themePool) {
+        if (i.name == name) {
             return i;
         }
     }
     return null;
 }
 
-function getIconByName(name){
-    for (var i of rewardPool){
-        if (i.name == name){
+function getIconByName(name) {
+    for (var i of rewardPool) {
+        if (i.name == name) {
             return i;
         }
     }
@@ -125,7 +125,7 @@ async function loadUserInventory(userId) {
             const data = userInfoSnap.data();
             console.log(data.rewards.items);
             inventory = data.rewards.items || []; // Array of item name strings
-            
+
             equippedIcon = data.rewards.equippedIcon || ""; // Item name string
             equippedTheme = data.rewards.equippedTheme || ""; // Item name string
 
@@ -280,7 +280,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         ticketCountEl.textContent = tickets;
     }
 
-    window.renderInventory = function() {
+    window.renderInventory = function () {
         if (!inventoryGridEl) return;
 
         if (inventory.length === 0) {
@@ -293,11 +293,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             .map(
                 (itemName) => {
                     // Fetch item details from name
-                    
-                    const item = getIconByName(itemName.replace("icon-","")) || getThemeByName(itemName.replace("theme-",""));
+
+                    const item = getIconByName(itemName.replace("icon-", "")) || getThemeByName(itemName.replace("theme-", ""));
                     if (!item) return ''; // Skip if item not found
 
-                    itemName = itemName.replace("theme-","").replace("icon-","");
+                    itemName = itemName.replace("theme-", "").replace("icon-", "");
 
                     const isEquipped = (item.type === 'avatar' && equippedIcon === itemName) ||
                         (item.type === 'theme' && equippedTheme === itemName);
