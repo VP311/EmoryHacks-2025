@@ -32,7 +32,7 @@ let currentUserId = null;
 let currentUserProgress = {};
 let currentSessionId = null;
 
-function loadJSON(path, success, error) {
+export function loadJSON(path, success, error) {
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function () {
         if (xhr.readyState === XMLHttpRequest.DONE) {
@@ -200,6 +200,12 @@ async function loadUserProgress() {
     } catch (error) {
         console.error("Error loading user progress:", error);
     }
+}
+
+export async function getUserInformation(){
+    const userInfoRef = doc(db, 'Users', currentUserId);
+    const userInfoSnap = await getDoc(userInfoRef);
+    return userInfoSnap.data();
 }
 
 // Firestore functions for questions
@@ -805,35 +811,70 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // Load a question onto the card
     async function loadQuestion() {
-        // If we've reached the end of current batch, load more questions
-        if (currentIndex >= questions.length) {
-            console.log('📚 Loading more questions...');
-            questionText.textContent = "Loading more questions...";
+    // Check if we need to load more questions
+    if (currentIndex >= questions.length) {
+        console.log('📚 Loading more questions...');
+        questionText.innerHTML = "<em>Loading more questions...</em>";
 
-            const newQuestions = await getAdaptiveQuestions(5);
+        const newQuestions = await getAdaptiveQuestions(5);
 
-            if (newQuestions.length === 0) {
-                endSession();
-                return;
-            }
-
-            // Add new questions to the existing batch
-            questions.push(...newQuestions);
-            console.log(`✅ Added ${newQuestions.length} more questions. Total: ${questions.length}`);
-
+        if (newQuestions.length === 0) {
+            endSession();
+            return;
         }
 
-        // Show end session button after 5 questions
+        questions.push(...newQuestions);
+        console.log(`✅ Added ${newQuestions.length} more questions. Total: ${questions.length}`);
+    }
+
+    // Show/hide end session button after 5 questions
+    if (endSessionBtn) {
         if (currentIndex >= 5) {
-            if (endSessionBtn) endSessionBtn.classList.remove('hidden');
+            endSessionBtn.classList.remove('hidden');
         } else {
-            if (endSessionBtn) endSessionBtn.classList.add('hidden');
+            endSessionBtn.classList.add('hidden');
         }
+    }
 
-        const q = questions[currentIndex];
-        questionText.textContent = q.passage + "\n" + q.questionText;
-        topicChip.textContent = q.type || q.topic || "Question";
-        questionCounter.textContent = `Question ${currentIndex + 1} / ${questions.length}`;
+    const q = questions[currentIndex];
+
+    // Clear previous question content
+    questionText.innerHTML = "";
+
+    // Wrapper div for question content
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('question-content');
+
+    // Add passage if exists
+    if (q.passage) {
+        const passageEl = document.createElement('p');
+        passageEl.textContent = q.passage;
+        wrapper.appendChild(passageEl);
+    }
+
+    // Add image if it exists
+    if (q.isImageQuestion && q.imageUrl) {
+        const imgEl = document.createElement('img');
+        imgEl.src = q.imageUrl;
+        imgEl.alt = "Question Image";
+        imgEl.classList.add('question-image');
+        imgEl.style.maxWidth = "100%";
+        wrapper.appendChild(imgEl);
+    }
+
+    // Add question text
+    if (q.questionText) {
+        const qTextEl = document.createElement('p');
+        qTextEl.textContent = q.questionText;
+        wrapper.appendChild(qTextEl);
+    }
+
+    // Append the wrapper to the container
+    questionText.appendChild(wrapper);
+
+    // Update topic and question counter
+    topicChip.textContent = q.type || q.topic || "Question";
+    questionCounter.textContent = `Question ${currentIndex + 1} / ${questions.length}`;
 
         // Render options first to check what gets rendered
         renderOptions(q);
@@ -880,11 +921,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // Clear option selections
-        document.querySelectorAll('.option-item').forEach(item => {
-            item.classList.remove('selected', 'correct', 'incorrect');
-        });
-    }
+    // Clear previous option selections
+    document.querySelectorAll('.option-item').forEach(item => {
+        item.classList.remove('selected', 'correct', 'incorrect');
+    });
+}
+
 
     function renderOptions(question) {
         // If no options or only 1 option (placeholder), treat as free response
