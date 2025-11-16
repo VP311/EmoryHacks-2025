@@ -184,12 +184,16 @@ async function loadUserProgress() {
     if (!currentUserId) return;
 
     try {
-        const userProgressRef = doc(db, 'Users', currentUserId, 'progress', 'data');
-        const userProgressSnap = await getDoc(userProgressRef);
+        const userRef = doc(db, 'Users', currentUserId,);
+        const userSnap = await getDoc(userRef);
 
-        if (userProgressSnap.exists()) {
-            currentUserProgress = userProgressSnap.data();
+        if (!userSnap.exists()) {
+            console.warn("User document does not exist");
+            return;
         }
+
+        const userData = userSnap.data();
+        const skillScores = userData.skillScores || {};
 
         const accuracy = calculateSkillAccuracy(skillScores);
         renderPerformanceChart(accuracy);
@@ -602,6 +606,27 @@ export async function getWrongQuestionsByCategory(categoryName) {
 
 // Load full question data for wrong questions in a category
 export async function loadWrongQuestionsForCategory(categoryName) {
+    const normalizeAnswer = str => String(str).trim().toLowerCase();
+    for (const questionId of questionIds.slice(0, 10)) {
+    const questionRef = doc(db, 'questions', questionId);
+    const questionSnap = await getDoc(questionRef);
+
+    if (questionSnap.exists()) {
+        const questionData = questionSnap.data();
+
+        const questionWithAnswer = {
+            id: questionId,
+            ...questionData,
+            userAnswer: answerMap[questionId]?.userAnswer || null,
+            normalizedUserAnswer: normalizeAnswer(answerMap[questionId]?.userAnswer || ''),
+            normalizedCorrectAnswer: normalizeAnswer(questionData.correctAnswer || ''),
+            rationale: answerMap[questionId]?.rationale || '',
+            timestamp: answerMap[questionId]?.timestamp || null
+        };
+        questions.push(questionWithAnswer);
+    }
+}
+
     console.log('📚 loadWrongQuestionsForCategory called with:', categoryName);
 
     const questionIds = await getWrongQuestionsByCategory(categoryName);
@@ -887,7 +912,11 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const currentQuestion = questions[currentIndex];
-            const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+            const normalize = str => String(str).trim().toLowerCase();
+            const selectedOptionText = currentQuestion.options[selectedAnswer.charCodeAt(0) - 65]; // "A" -> index 0
+
+            const isCorrect = normalize(selectedOptionText) === normalize(currentQuestion.correctAnswer);
+
             const rationale = isUnsure ? rationaleInput.value : '';
 
             // Show feedback
@@ -923,30 +952,36 @@ document.addEventListener("DOMContentLoaded", () => {
             nextBtn.classList.remove("hidden");
         });
     }
-    function showAnswerFeedback(isCorrect, question) {
-        answerFeedback.classList.remove("hidden");
-        answerFeedback.className = `answer-feedback ${isCorrect ? 'correct' : 'incorrect'}`;
 
-        if (isCorrect) {
-            answerFeedback.innerHTML = `
-                <strong>✓ Correct!</strong> ${question.explanation || 'Great job!'}
-            `;
-        } else {
-            answerFeedback.innerHTML = `
-                <strong>✗ Incorrect.</strong> The correct answer is <strong>${question.correctAnswer}</strong>.
-            `;
-        }
-
-        // Highlight correct/incorrect options
-        document.querySelectorAll('.option-item').forEach(item => {
-            const optionLabel = item.dataset.option;
-            if (optionLabel === question.correctAnswer) {
-                item.classList.add('correct');
-            } else if (optionLabel === selectedAnswer) {
-                item.classList.add('incorrect');
-            }
-        });
+    function normalize(str) {
+    return String(str || '').trim().toLowerCase();
     }
+
+    function showAnswerFeedback(isCorrect, question) {
+    answerFeedback.classList.remove("hidden");
+    answerFeedback.className = `answer-feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+
+    if (isCorrect) {
+        answerFeedback.innerHTML = `<strong>✓ Correct!</strong> ${question.explanation || 'Great job!'}`;
+    } else {
+        answerFeedback.innerHTML = `
+            <strong>✗ Incorrect.</strong> The correct answer is <strong>${question.correctAnswer}</strong>.
+        `;
+    }
+
+    // Highlight correct/incorrect options
+    document.querySelectorAll('.option-item').forEach(item => {
+    const optionLabel = item.dataset.option; // "A", "B", ...
+    const optionText = item.querySelector('.option-text')?.textContent || "";
+
+    if (normalize(optionText) === normalize(question.correctAnswer)) {
+        item.classList.add('correct');
+    } else if (optionLabel === selectedAnswer) {
+        item.classList.add('incorrect');
+    }
+});
+
+}
 
     async function showAIExplanation(question, userAnswer, rationale) {
         try {
