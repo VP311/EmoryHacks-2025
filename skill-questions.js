@@ -184,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // Load skill performance data from Firebase
 async function loadSkillDataFromFirebase(user, skillName) {
     try {
-        const userRef = doc(db, 'users', user.uid);
+        const userRef = doc(db, 'Users', user.uid);
         const userSnap = await getDoc(userRef);
         
         if (userSnap.exists()) {
@@ -282,20 +282,36 @@ function renderReviewQuestions(questions) {
             <div class="review-answer-section">
                 <div class="answer-comparison">
                     <div class="user-answer-label">
-                        <span class="wrong-icon">✗</span> Your Answer: <strong class="wrong-answer">${question.userAnswer}</strong>
+                        <span class="wrong-icon">✗</span> Your Answer: <strong class="wrong-answer">${getDisplayAnswer(question)}</strong>
                     </div>
                     <div class="correct-answer-label">
                         <span class="correct-icon">✓</span> Correct Answer: <strong class="correct-answer">${question.correctAnswer}</strong>
                     </div>
                 </div>
                 <div class="review-explanation">
-                    <strong>Explanation:</strong> ${question.explanation}
+                    <strong>Explanation:</strong> ${question.explanation || 'No explanation available.'}
                 </div>
             </div>
         </div>
     `).join('');
     
     container.innerHTML = questionsHTML;
+}
+
+function getDisplayAnswer(question) {
+    // If userAnswer is a single letter (A, B, C, D) and we have options, convert to option text
+    if (question.userAnswer && question.userAnswer.length === 1 && 
+        question.options && question.options.length > 0) {
+        const letterCode = question.userAnswer.toUpperCase().charCodeAt(0);
+        if (letterCode >= 65 && letterCode <= 90) { // A-Z
+            const index = letterCode - 65; // A=0, B=1, etc.
+            if (index < question.options.length) {
+                return question.options[index];
+            }
+        }
+    }
+    // Otherwise return as-is
+    return question.userAnswer || 'No answer recorded';
 }
 
 function renderReviewOptions(question) {

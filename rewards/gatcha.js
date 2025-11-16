@@ -100,7 +100,7 @@ let currentUserId = null;
 // Load user inventory and equipped items from Firestore
 async function loadUserInventory(userId) {
     try {
-        const inventoryRef = doc(db, 'users', userId, 'rewards', 'inventory');
+        const inventoryRef = doc(db, 'Users', userId, 'rewards', 'inventory');
         const inventorySnap = await getDoc(inventoryRef);
 
         if (inventorySnap.exists()) {
@@ -129,7 +129,7 @@ async function loadUserInventory(userId) {
 // Save inventory to Firestore
 async function saveInventory(userId) {
     try {
-        const inventoryRef = doc(db, 'users', userId, 'rewards', 'inventory');
+        const inventoryRef = doc(db, 'Users', userId, 'rewards', 'inventory');
         await updateDoc(inventoryRef, {
             items: inventory,
             equippedIcon: equippedIcon,
@@ -155,7 +155,7 @@ async function equipItem(itemName, itemType) {
     renderInventory();
 
     // Save equipped icon to user preferences for profile page
-    const prefsRef = doc(db, 'users', currentUserId, 'preferences', 'settings');
+    const prefsRef = doc(db, 'Users', currentUserId, 'preferences', 'settings');
     await setDoc(prefsRef, {
         equippedIcon: equippedIcon,
         equippedTheme: equippedTheme
@@ -176,7 +176,7 @@ async function unequipItem(itemType) {
     await saveInventory(currentUserId);
     renderInventory();
 
-    const prefsRef = doc(db, 'users', currentUserId, 'preferences', 'settings');
+    const prefsRef = doc(db, 'Users', currentUserId, 'preferences', 'settings');
     await setDoc(prefsRef, {
         equippedIcon: equippedIcon,
         equippedTheme: equippedTheme

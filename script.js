@@ -32,7 +32,7 @@ let currentUserId = null;
 let currentUserProgress = {};
 let currentSessionId = null;
 
-function loadJSON(path, success, error) {
+export function loadJSON(path, success, error) {
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function () {
         if (xhr.readyState === XMLHttpRequest.DONE) {
@@ -200,6 +200,12 @@ async function loadUserProgress() {
     } catch (error) {
         console.error("Error loading user progress:", error);
     }
+}
+
+export async function getUserInformation(){
+    const userInfoRef = doc(db, 'Users', currentUserId);
+    const userInfoSnap = await getDoc(userInfoRef);
+    return userInfoSnap.data();
 }
 
 // Firestore functions for questions
@@ -508,6 +514,41 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
             }
         }
 
+        // If categoryKey is still the topic and not one of our standard categories, try to infer
+        const standardCategories = [
+            'Algebra', 'Advanced Math', 'Geometry and Trigonometry', 
+            'Problem-Solving and Data Analysis', 'Craft & Structure', 
+            'Information and Ideas', 'Conventions of Standard English', 
+            'Expression of Ideas'
+        ];
+        
+        if (!standardCategories.includes(categoryKey)) {
+            // Try to infer from the topic string
+            const topicLower = categoryKey.toLowerCase();
+            if (topicLower.includes('algebra') || topicLower.includes('linear') || topicLower.includes('quadratic')) {
+                categoryKey = 'Algebra';
+            } else if (topicLower.includes('function') || topicLower.includes('polynomial') || topicLower.includes('exponential')) {
+                categoryKey = 'Advanced Math';
+            } else if (topicLower.includes('geometry') || topicLower.includes('trigonometry') || topicLower.includes('triangle') || topicLower.includes('circle')) {
+                categoryKey = 'Geometry and Trigonometry';
+            } else if (topicLower.includes('data') || topicLower.includes('statistic') || topicLower.includes('probability') || topicLower.includes('ratio') || topicLower.includes('percent')) {
+                categoryKey = 'Problem-Solving and Data Analysis';
+            } else if (topicLower.includes('craft') || topicLower.includes('structure') || topicLower.includes('purpose')) {
+                categoryKey = 'Craft & Structure';
+            } else if (topicLower.includes('information') || topicLower.includes('ideas') || topicLower.includes('central')) {
+                categoryKey = 'Information and Ideas';
+            } else if (topicLower.includes('grammar') || topicLower.includes('punctuation') || topicLower.includes('convention')) {
+                categoryKey = 'Conventions of Standard English';
+            } else if (topicLower.includes('expression') || topicLower.includes('rhetoric') || topicLower.includes('transition')) {
+                categoryKey = 'Expression of Ideas';
+            } else {
+                // Default to Other for non-SAT questions
+                categoryKey = 'Other';
+            }
+        }
+
+        console.log(`📝 Question ${questionId}: topic="${questionTopic}", tags=[${tags?.join(', ')}], final category="${categoryKey}"`);
+
         // Get reference to user document
         const userRef = doc(db, 'Users', currentUserId);
 
@@ -516,8 +557,7 @@ export async function updateUserProgress(questionId, isCorrect, skillCategory, t
         const currentProgress = userSnap.exists() ? userSnap.data() : {};
         const skillScores = currentProgress.skillScores || {};
 
-        // Update the specific skill category
-        categoryKey = skillCategory || (tags?.[0] || 'Other');
+        // Update the specific skill category (categoryKey already calculated above)
         if (!skillScores[categoryKey]) {
             skillScores[categoryKey] = { correct: 0, total: 0, incorrectQID: [] };
         }
@@ -576,7 +616,7 @@ export async function getWrongQuestionsByCategory(categoryName) {
 
     try {
         // Access the user document where skillScores is a map field
-        const userRef = doc(db, 'users', currentUserId);
+        const userRef = doc(db, 'Users', currentUserId);
         console.log('📄 Fetching user doc from:', `users/${currentUserId}`);
 
         const userSnap = await getDoc(userRef);
@@ -616,7 +656,7 @@ export async function loadWrongQuestionsForCategory(categoryName) {
 
     try {
         // 2️⃣ Fetch user's answers
-        const userRef = doc(db, 'users', currentUserId);
+        const userRef = doc(db, 'Users', currentUserId);
         const userSnap = await getDoc(userRef);
         const answers = userSnap.exists() ? userSnap.data().answers || [] : [];
 
