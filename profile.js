@@ -45,7 +45,7 @@ export async function loadIndexPage() {
                 try {
                     const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js");
                     const { db } = await import('./script.js');
-                    const prefsRef = doc(db, 'users', user.uid, 'preferences', 'settings');
+                    const prefsRef = doc(db, 'Users', user.uid, 'preferences', 'settings');
                     const prefsSnap = await getDoc(prefsRef);
 
                     if (prefsSnap.exists() && prefsSnap.data().equippedIcon) {
@@ -90,7 +90,7 @@ export function loadProfilePage() {
         try {
             const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js");
             const { db } = await import('./script.js');
-            const prefsRef = doc(db, 'users', user.uid, 'preferences', 'settings');
+            const prefsRef = doc(db, 'Users', user.uid, 'preferences', 'settings');
             const prefsSnap = await getDoc(prefsRef);
 
             let iconSrc = null;

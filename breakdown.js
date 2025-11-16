@@ -53,17 +53,21 @@ function showProgressState() {
 
 // Load user progress from Firestore
 async function loadUserProgressFromFirestore(userId) {
+    console.log('🔍 loadUserProgressFromFirestore called with userId:', userId);
     try {
         // Access user document directly where skillScores is a map field
-        const userRef = doc(db, 'users', userId);
+        const userRef = doc(db, 'Users', userId);
+        console.log('📄 Fetching user doc from: users/' + userId);
         const userSnap = await getDoc(userRef);
 
         // Check if user document exists
         if (!userSnap.exists()) {
-            console.log("No user data found.");
+            console.log("❌ No user data found.");
             showEmptyState(); // Show welcome message
             return;
         }
+        
+        console.log('✅ User document exists!');
 
         const userData_firebase = userSnap.data();
         const skillScores = userData_firebase.skillScores || {};
@@ -97,10 +101,46 @@ async function loadUserProgressFromFirestore(userId) {
         const mathSkills = userData.math.skills;
         const readingSkills = userData.reading.skills;
 
+        console.log('📊 Firebase skillScores keys:', Object.keys(skillScores));
+        console.log('📊 Math skill names:', mathSkills.map(s => s.name));
+        console.log('📊 Reading skill names:', readingSkills.map(s => s.name));
+        console.log('📊 Full skillScores data:', JSON.stringify(skillScores, null, 2));
+
         // Update math skills with accuracy = correct / total
         mathSkills.forEach(skill => {
             const skillName = skill.name;
-            const skillData = skillScores[skillName];
+            console.log(`\n🔍 Looking for skill: "${skillName}"`);
+            
+            // Try exact match first
+            let skillData = skillScores[skillName];
+            console.log(`  Exact match result:`, skillData);
+            
+            // Try with spaces replaced by dashes
+            if (!skillData) {
+                const dashName = skillName.replace(/ /g, '-');
+                skillData = skillScores[dashName];
+                console.log(`  Trying "${dashName}":`, skillData);
+            }
+            
+            // Try with & replaced by 'and'
+            if (!skillData) {
+                const andName = skillName.replace(/&/g, 'and');
+                skillData = skillScores[andName];
+                console.log(`  Trying "${andName}":`, skillData);
+            }
+            
+            // If still not found, try finding any key that contains the main words
+            if (!skillData) {
+                const mainWord = skillName.split(' ')[0].toLowerCase();
+                console.log(`  Searching for keys containing "${mainWord}"...`);
+                const matchingKey = Object.keys(skillScores).find(key => 
+                    key.toLowerCase().includes(mainWord)
+                );
+                console.log(`  Found matching key:`, matchingKey);
+                if (matchingKey) skillData = skillScores[matchingKey];
+            }
+            
+            console.log(`  Final skillData for "${skillName}":`, skillData);
             if (skillData && skillData.total > 0) {
                 const accuracy = (skillData.correct / skillData.total) * 100;
                 // Convert accuracy to SAT score (200-800 scale)
@@ -117,7 +157,20 @@ async function loadUserProgressFromFirestore(userId) {
         // Update reading skills with accuracy = correct / total
         readingSkills.forEach(skill => {
             const skillName = skill.name;
-            const skillData = skillScores[skillName];
+            // Try multiple variations of the skill name
+            let skillData = skillScores[skillName] || 
+                           skillScores[skillName.replace(/ /g, '-')] || 
+                           skillScores[skillName.replace(/&/g, 'and')];
+            
+            // If still not found, try finding any key that contains the main words
+            if (!skillData) {
+                const mainWord = skillName.split(' ')[0].toLowerCase();
+                const matchingKey = Object.keys(skillScores).find(key => 
+                    key.toLowerCase().includes(mainWord)
+                );
+                if (matchingKey) skillData = skillScores[matchingKey];
+            }
+            
             if (skillData && skillData.total > 0) {
                 const accuracy = (skillData.correct / skillData.total) * 100;
                 const satScore = 200 + (accuracy / 100) * 600;
@@ -206,14 +259,17 @@ function attachSkillLinkListeners() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    console.log('📱 Breakdown page loaded, waiting for auth...');
     // Load user progress from Firestore
     onAuthStateChanged(auth, (user) => {
+        console.log('🔐 Auth state changed. User:', user ? user.uid : 'null');
         if (user) {
+            console.log('✅ User is logged in, loading progress...');
             loadUserProgressFromFirestore(user.uid);
         } else {
             // If no user is logged in, show the empty state
             showEmptyState();
-            console.log("No user logged in. Showing empty state.");
+            console.log("❌ No user logged in. Showing empty state.");
         }
     });
 
