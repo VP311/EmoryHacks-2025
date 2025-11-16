@@ -7,6 +7,7 @@ import { getAuth, signInWithCredential, GoogleAuthProvider, onAuthStateChanged, 
 import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, where, addDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
 import { applyTheme } from "./rewards/gatcha.js";
+import { loadIndexPage } from "./profile.js";
 
 //configuration of firebase
 const firebaseConfig = {
